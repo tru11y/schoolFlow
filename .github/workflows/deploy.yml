@@ -1,0 +1,58 @@
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+env:
+  FIREBASE_CLI_EXPERIMENTS: webframeworks
+
+jobs:
+  test-build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Placeholders only: nothing is contacted at build time.
+          DATABASE_URL: postgresql://build:build@localhost:5432/build
+          SESSION_SECRET: build-placeholder-session-secret-32-chars
+          AUDIT_HMAC_KEY: build-placeholder-audit-hmac-key-32-chars
+          APP_URL: https://schoolflow-app.web.app
+
+      - name: Runtime environment for the Firebase backend
+        run: |
+          {
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}"
+            echo "SESSION_SECRET=${{ secrets.SESSION_SECRET }}"
+            echo "AUDIT_HMAC_KEY=${{ secrets.AUDIT_HMAC_KEY }}"
+            echo "APP_URL=${{ vars.APP_URL || 'https://schoolflow-app.web.app' }}"
+          } > .env.production
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: schoolflow-app
+          channelId: live

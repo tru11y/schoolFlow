@@ -1,0 +1,281 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  ACCOUNTANT
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+enum AuditOutcome {
+  SUCCESS
+  DENIED
+  FAILURE
+}
+
+model School {
+  id        String    @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+  users     User[]
+
+  @@map("schools")
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PENDING
+  ARCHIVED
+}
+
+model StudentProfile {
+  id        String           @id @default(uuid()) @db.Uuid
+  schoolId  String           @db.Uuid
+  userId    String           @unique @db.Uuid
+  user      User             @relation("ProfileUser", fields: [userId], references: [id], onDelete: Restrict)
+  birthDate DateTime         @db.Date
+  level     String
+  address   String
+  status    EnrollmentStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([schoolId, level])
+  @@index([schoolId, status])
+  @@map("student_profiles")
+}
+
+/// 1 to 2 parents / guardians per student (position 0 = primary).
+model ParentContact {
+  id        String   @id @default(uuid()) @db.Uuid
+  schoolId  String   @db.Uuid
+  studentId String   @db.Uuid
+  student   User     @relation("ParentStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  position  Int
+  name      String
+  /// "Père", "Mère", "Tuteur légal", "Oncle"...
+  relation  String
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, position])
+  @@index([schoolId])
+  @@map("parent_contacts")
+}
+
+/// Weekly slot for a whole class (`level`) or for a single student (`studentId`); exactly one is set.
+model TimetableSlot {
+  id        String              @id @default(uuid()) @db.Uuid
+  schoolId  String              @db.Uuid
+  level     String?
+  studentId String?             @db.Uuid
+  student   User?               @relation("SlotStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  /// 1 = Monday ... 7 = Sunday
+  weekday   Int
+  startTime String
+  endTime   String
+  subject   String
+  teacherId String?             @db.Uuid
+  teacher   User?               @relation("SlotTeacher", fields: [teacherId], references: [id], onDelete: Restrict)
+  room      String?
+  createdAt DateTime            @default(now())
+  sessions  AttendanceSession[]
+
+  @@index([schoolId, level])
+  @@index([studentId])
+  @@map("timetable_slots")
+}
+
+model Course {
+  id          String             @id @default(uuid()) @db.Uuid
+  schoolId    String             @db.Uuid
+  name        String
+  /// 1 = Monday ... 7 = Sunday
+  weekday     Int
+  startTime   String
+  createdAt   DateTime           @default(now())
+  enrollments CourseEnrollment[]
+
+  @@index([schoolId])
+  @@map("courses")
+}
+
+model CourseEnrollment {
+  id        String   @id @default(uuid()) @db.Uuid
+  schoolId  String   @db.Uuid
+  courseId  String   @db.Uuid
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Restrict)
+  studentId String   @db.Uuid
+  student   User     @relation("EnrollmentStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, studentId])
+  @@index([schoolId, studentId])
+  @@map("course_enrollments")
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+model Invoice {
+  id          String        @id @default(uuid()) @db.Uuid
+  schoolId    String        @db.Uuid
+  studentId   String        @db.Uuid
+  student     User          @relation("InvoiceStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  label       String
+  amountCents Int
+  dueDate     DateTime
+  status      InvoiceStatus @default(PENDING)
+  paidAt      DateTime?
+  /// SHA-256 certifying the receipt; unique so it can be verified publicly.
+  receiptHash String?       @unique @db.Char(64)
+  createdAt   DateTime      @default(now())
+  deletedAt   DateTime?
+
+  @@index([schoolId, status])
+  @@index([studentId])
+  @@map("invoices")
+}
+
+model AttendanceRecord {
+  id        String             @id @default(uuid()) @db.Uuid
+  schoolId  String             @db.Uuid
+  studentId String             @db.Uuid
+  student   User               @relation("AttendanceStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  date      DateTime           @db.Date
+  status    AttendanceStatus
+  sessionId String?            @db.Uuid
+  session   AttendanceSession? @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  createdAt DateTime           @default(now())
+
+  @@unique([sessionId, studentId])
+  @@index([schoolId, date])
+  @@index([studentId, date])
+  @@map("attendance_records")
+}
+
+/// One roll call: who submitted it, when, and whether it was outside the scheduled slot.
+model AttendanceSession {
+  id            String             @id @default(uuid()) @db.Uuid
+  schoolId      String             @db.Uuid
+  level         String
+  subject       String?
+  slotId        String?            @db.Uuid
+  slot          TimetableSlot?     @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  date          DateTime           @db.Date
+  /// Who actually submitted the roll call.
+  recorderId    String             @db.Uuid
+  recorder      User               @relation("SessionRecorder", fields: [recorderId], references: [id], onDelete: Restrict)
+  /// Teacher scheduled for the slot, if any.
+  teacherId     String?            @db.Uuid
+  submittedAt   DateTime           @default(now())
+  isOverdue     Boolean            @default(false)
+  /// Minutes after the slot end (positive) or before its start (negative); null without slot.
+  offsetMinutes Int?
+  records       AttendanceRecord[]
+
+  @@unique([slotId, date])
+  @@index([schoolId, date])
+  @@map("attendance_sessions")
+}
+
+model Homework {
+  id        String   @id @default(uuid()) @db.Uuid
+  schoolId  String   @db.Uuid
+  authorId  String   @db.Uuid
+  author    User     @relation("HomeworkAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([schoolId, createdAt])
+  @@map("homeworks")
+}
+
+model User {
+  id               String              @id @default(uuid()) @db.Uuid
+  schoolId         String?             @db.Uuid
+  school           School?             @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  email            String              @unique
+  passwordHash     String
+  role             Role
+  firstName        String
+  lastName         String
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  deletedAt        DateTime?
+  sessions         Session[]
+  invoices         Invoice[]           @relation("InvoiceStudent")
+  attendances      AttendanceRecord[]  @relation("AttendanceStudent")
+  homeworks        Homework[]          @relation("HomeworkAuthor")
+  profile          StudentProfile?     @relation("ProfileUser")
+  enrollments      CourseEnrollment[]  @relation("EnrollmentStudent")
+  parents          ParentContact[]     @relation("ParentStudent")
+  studentSlots     TimetableSlot[]     @relation("SlotStudent")
+  taughtSlots      TimetableSlot[]     @relation("SlotTeacher")
+  recordedSessions AttendanceSession[] @relation("SessionRecorder")
+
+  @@index([schoolId, role])
+  @@map("users")
+}
+
+/// Append-only. UPDATE/DELETE/TRUNCATE are blocked by DB triggers (prisma/sql/audit_immutable.sql).
+model AuditLog {
+  seq        BigInt       @id @default(autoincrement())
+  id         String       @unique @db.Uuid
+  createdAt  DateTime
+  schoolId   String?      @db.Uuid
+  actorId    String?      @db.Uuid
+  actorRole  Role?
+  action     String
+  resource   String
+  resourceId String?
+  outcome    AuditOutcome
+  ip         String?
+  userAgent  String?
+  metadata   Json
+  prevHash   String       @db.Char(64)
+  hash       String       @db.Char(64)
+
+  @@index([schoolId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([resource, resourceId])
+  @@map("audit_logs")
+}
+
+model Session {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  /// SHA-256 of the opaque cookie token; the raw token is never stored.
+  tokenHash  String    @unique @db.Char(64)
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  ip         String?
+  userAgent  String?
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@map("sessions")
+}
