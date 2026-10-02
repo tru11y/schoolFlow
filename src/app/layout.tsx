@@ -5,8 +5,9 @@ export const metadata: Metadata = { title: "SchoolFlow" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
-      <body className="min-h-dvh antialiased">{children}</body>
+    // Browser extensions inject attributes on <html>/<body> before hydration; ignore those benign mismatches.
+    <html lang="fr" suppressHydrationWarning>
+      <body className="min-h-dvh antialiased" suppressHydrationWarning>{children}</body>
     </html>
   );
 }

@@ -1,6 +1,7 @@
 import { localParts } from "@/core/domain/attendance/policy";
 import { can } from "@/core/domain/rbac/role";
-import { formatEuros } from "@/core/domain/finance/receipt";
+import { formatMoney } from "@/core/domain/finance/money";
+import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requireAuth } from "@/presentation/auth/guards";
 import { Card, PageTitle, StatCard } from "@/presentation/components/ui";
@@ -11,6 +12,7 @@ export default async function DashboardPage() {
   const principal = await requireAuth();
   const db = tenantPrisma(principal);
   const showFinance = can(principal.role, "finance:read");
+  const currency = await getSchoolCurrency(principal.schoolId);
 
   const [students, present, recorded, homeworks, pending] = await Promise.all([
     db.user.count({ where: { role: "STUDENT", deletedAt: null } }),
@@ -36,7 +38,7 @@ export default async function DashboardPage() {
         />
         <StatCard index={2} icon="📓" tone="lilac" label="Notes au cahier de texte" value={String(homeworks)} />
         {pending ? (
-          <StatCard index={3} icon="💳" tone="mint" label="Impayés" value={formatEuros(pending._sum.amountCents ?? 0)} />
+          <StatCard index={3} icon="💳" tone="mint" label="Impayés" value={formatMoney(pending._sum.amountCents ?? 0, currency)} />
         ) : null}
       </div>
       <Card className="mt-6">

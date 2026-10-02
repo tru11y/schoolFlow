@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LEVELS } from "@/core/domain/students/student";
+import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Card, PageTitle } from "@/presentation/components/ui";
@@ -36,7 +36,8 @@ export default async function TakeAttendancePage({ searchParams }: { searchParam
 
   const profiles = await db.studentProfile.findMany({ where: { status: "ACTIVE" }, select: { level: true }, distinct: ["level"] });
   const known = new Set(profiles.map((p) => p.level));
-  const levels = [...LEVELS.filter((l) => known.has(l)), ...[...known].filter((l) => !LEVELS.some((x) => x === l))];
+  const configured = (await listLevels(db)).map((l) => l.name);
+  const levels = [...configured.filter((l) => known.has(l)), ...[...known].filter((l) => !configured.includes(l))];
   const level = rawLevel && known.has(rawLevel) ? rawLevel : null;
 
   let content: React.ReactNode = <p className="text-ink/70">Choisissez une classe pour commencer l&apos;appel.</p>;

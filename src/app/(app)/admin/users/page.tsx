@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { ROLES, type Role } from "@/core/domain/rbac/role";
 import { ROLE_LABELS, canManageRole } from "@/core/domain/rbac/user-management";
+import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
@@ -33,6 +34,7 @@ export default async function UsersPage({
         }
       : {}),
   };
+  const levels = await listLevels(db);
   const [users, students] = await Promise.all([
     db.user.findMany({
       where,
@@ -55,7 +57,7 @@ export default async function UsersPage({
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle title="Utilisateurs" subtitle={`${users.length} compte${users.length > 1 ? "s" : ""}`} />
-        <CreateUser roles={creatable} students={students.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}` }))} />
+        <CreateUser levels={levels.map((l) => l.name)} roles={creatable} students={students.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}` }))} />
       </div>
 
       <form method="get" role="search" className="mb-4 flex flex-wrap gap-3">

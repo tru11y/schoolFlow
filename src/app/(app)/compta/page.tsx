@@ -1,5 +1,6 @@
 import { can } from "@/core/domain/rbac/role";
-import { formatEuros } from "@/core/domain/finance/receipt";
+import { formatMoney } from "@/core/domain/finance/money";
+import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
@@ -8,6 +9,7 @@ import { PayButton } from "./pay-button";
 export default async function ComptaPage() {
   const principal = await requirePagePermission("finance:read");
   const canWrite = can(principal.role, "finance:write");
+  const currency = await getSchoolCurrency(principal.schoolId);
   const invoices = await tenantPrisma(principal).invoice.findMany({
     where: { deletedAt: null },
     orderBy: { dueDate: "asc" },
@@ -36,7 +38,7 @@ export default async function ComptaPage() {
                 <td className="px-4 py-3">{inv.student.firstName} {inv.student.lastName}</td>
                 <td className="px-4 py-3">{inv.label}</td>
                 <td className="px-4 py-3 tabular-nums">{inv.dueDate.toLocaleDateString("fr-FR")}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatEuros(inv.amountCents)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(inv.amountCents, currency)}</td>
                 <td className="px-4 py-3">
                   <Badge tone={inv.status === "PAID" ? "success" : "warning"}>
                     {inv.status === "PAID" ? "Payée" : "En attente"}

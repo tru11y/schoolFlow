@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { LEVELS } from "@/core/domain/students/student";
 import { createStudent, type CreateStudentResult } from "../actions";
 import { ParentsFields, readParents } from "../parents-fields";
 
@@ -19,11 +18,34 @@ function Field({ label, errors, children }: { label: string; errors?: string[]; 
   );
 }
 
-export function EnrollForm() {
+interface LevelFee {
+  name: string;
+  fee: number | null;
+}
+
+export function EnrollForm({ currencySymbol, levels }: { currencySymbol: string; levels: LevelFee[] }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
+  const [level, setLevel] = useState("");
+  const [installments, setInstallments] = useState(3);
+  const [total, setTotal] = useState("");
+  const [totalEdited, setTotalEdited] = useState(false);
   const [created, setCreated] = useState<Extract<CreateStudentResult, { status: "created" }> | null>(null);
+
+  /** Suggests total = level fee x installments, until the user types their own total. */
+  const suggest = (levelName: string, count: number) => {
+    const fee = levels.find((l) => l.name === levelName)?.fee;
+    if (!totalEdited && fee != null) setTotal(String(fee * count));
+  };
+  const pickLevel = (name: string) => {
+    setLevel(name);
+    suggest(name, installments);
+  };
+  const pickInstallments = (count: number) => {
+    setInstallments(count);
+    suggest(level, count);
+  };
 
   if (created) {
     return (
@@ -58,11 +80,11 @@ export function EnrollForm() {
       <Field label="Prénom" errors={fieldErrors.firstName}><input name="firstName" required maxLength={60} className={field} /></Field>
       <Field label="Nom" errors={fieldErrors.lastName}><input name="lastName" required maxLength={60} className={field} /></Field>
       <Field label="E-mail de l'élève" errors={fieldErrors.email}><input name="email" type="email" required className={field} /></Field>
-      <Field label="Date de naissance" errors={fieldErrors.birthDate}><input name="birthDate" type="date" required className={field} /></Field>
+      
       <Field label="Classe" errors={fieldErrors.level}>
-        <select name="level" required defaultValue="" className={field}>
+        <select name="level" required value={level} onChange={(e) => pickLevel(e.target.value)} className={field}>
           <option value="" disabled>Choisir…</option>
-          {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+          {levels.map((l) => <option key={l.name} value={l.name}>{l.name}</option>)}
         </select>
       </Field>
       <Field label="Adresse" errors={fieldErrors.address}><input name="address" required maxLength={200} className={field} /></Field>
@@ -70,8 +92,8 @@ export function EnrollForm() {
 
       <fieldset className="grid gap-4 rounded-3xl bg-canvas/60 p-4 sm:col-span-2 sm:grid-cols-3">
         <legend className="px-2 text-sm text-ink/70">Échéancier initial</legend>
-        <Field label="Total (€)" errors={fieldErrors.totalEuros}><input name="totalEuros" type="number" min={0} step="0.01" defaultValue={360} required className={field} /></Field>
-        <Field label="Nombre d'échéances" errors={fieldErrors.installments}><input name="installments" type="number" min={1} max={12} defaultValue={3} required className={field} /></Field>
+        <Field label={`Total (${currencySymbol})`} errors={fieldErrors.total}><input name="total" type="number" min={0} step="any" value={total} onChange={(e) => { setTotalEdited(true); setTotal(e.target.value); }} required className={field} /></Field>
+        <Field label="Nombre d'échéances" errors={fieldErrors.installments}><input name="installments" type="number" min={1} max={12} value={installments} onChange={(e) => pickInstallments(Number(e.target.value) || 1)} required className={field} /></Field>
         <Field label="Première échéance" errors={fieldErrors.firstDue}><input name="firstDue" type="date" required className={field} /></Field>
       </fieldset>
 

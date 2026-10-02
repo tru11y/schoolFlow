@@ -3,7 +3,6 @@
 import { useRef, useState, useTransition } from "react";
 import type { Role } from "@/core/domain/rbac/role";
 import { ROLE_LABELS } from "@/core/domain/rbac/user-management";
-import { LEVELS } from "@/core/domain/students/student";
 import { ParentsFields, readParents } from "../../students/parents-fields";
 import { createUser } from "./actions";
 
@@ -13,9 +12,10 @@ const field =
 interface Props {
   roles: Role[];
   students: { id: string; name: string }[];
+  levels: string[];
 }
 
-export function CreateUser({ roles, students }: Props) {
+export function CreateUser({ roles, students, levels }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [role, setRole] = useState<Role>(roles.includes("TEACHER") ? "TEACHER" : (roles[0] ?? "TEACHER"));
   const [pending, start] = useTransition();
@@ -102,7 +102,7 @@ export function CreateUser({ roles, students }: Props) {
                 <fieldset className="grid gap-1 text-sm">
                   <legend className="mb-1">Classes attribuées</legend>
                   <div className="flex flex-wrap gap-2">
-                    {LEVELS.map((l) => (
+                    {levels.map((l) => (
                       <label key={l} className="flex min-h-9 items-center gap-2 rounded-xl bg-canvas px-3 ring-1 ring-white/15">
                         <input type="checkbox" name="classLevels" value={l} /> {l}
                       </label>
@@ -117,11 +117,8 @@ export function CreateUser({ roles, students }: Props) {
                 <label className="grid gap-1 text-sm">Classe
                   <select name="level" required defaultValue="" className={field}>
                     <option value="" disabled>Choisir…</option>
-                    {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+                    {levels.map((l) => <option key={l} value={l}>{l}</option>)}
                   </select>
-                </label>
-                <label className="grid gap-1 text-sm">Date de naissance
-                  <input name="birthDate" type="date" required className={field} />
                 </label>
                 <label className="grid gap-1 text-sm sm:col-span-2">Adresse
                   <input name="address" required maxLength={200} className={field} />

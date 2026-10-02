@@ -38,7 +38,6 @@ const createInput = z.discriminatedUnion("role", [
     ...base,
     role: z.literal("STUDENT"),
     level: text(20),
-    birthDate: z.coerce.date().refine((d) => d <= new Date(), "Date dans le futur"),
     address: text(200),
     parents: parentsSchema,
   }),
@@ -89,7 +88,7 @@ export const createUser = secureAction(
         ...(input.role === "TEACHER" ? { specialty: input.specialty, classLevels: input.classLevels } : {}),
         ...(input.role === "STUDENT"
           ? {
-              profile: { create: { schoolId, birthDate: input.birthDate, level: input.level, address: input.address, status: "ACTIVE" } },
+              profile: { create: { schoolId, level: input.level, address: input.address, status: "ACTIVE" } },
               parents: { create: input.parents.map((p, position) => ({ schoolId, position, ...p })) },
             }
           : {}),

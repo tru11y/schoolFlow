@@ -1,14 +1,24 @@
+import { CURRENCIES } from "@/core/domain/finance/money";
+import { listLevels } from "@/infrastructure/db/levels";
+import { getSchoolCurrency } from "@/infrastructure/db/school";
+import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Card, PageTitle } from "@/presentation/components/ui";
 import { EnrollForm } from "./enroll-form";
 
 export default async function NewStudentPage() {
-  await requirePagePermission("user:manage");
+  const principal = await requirePagePermission("user:manage");
+  const currency = await getSchoolCurrency(principal.schoolId);
+  const levels = await listLevels(tenantPrisma(principal));
+  const exponent = CURRENCIES[currency].exponent;
   return (
     <>
       <PageTitle title="Nouvelle inscription" subtitle="Fiche élève et échéancier initial" />
       <Card className="max-w-3xl">
-        <EnrollForm />
+        <EnrollForm
+          currencySymbol={CURRENCIES[currency].symbol}
+          levels={levels.map((l) => ({ name: l.name, fee: l.monthlyFee === null ? null : l.monthlyFee / 10 ** exponent }))}
+        />
       </Card>
     </>
   );

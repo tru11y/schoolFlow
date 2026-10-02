@@ -14,6 +14,3 @@ export function receiptHash(f: ReceiptFacts): string {
   return createHash("sha256").update(payload).digest("hex");
 }
 
-export function formatEuros(cents: number): string {
-  return `${(cents / 100).toFixed(2).replace(".", ",")} EUR`;
-}

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
-import { formatEuros } from "@/core/domain/finance/receipt";
+import { formatMoney } from "@/core/domain/finance/money";
 import { prisma } from "@/infrastructure/db/prisma";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { env } from "@/infrastructure/env/env";
@@ -26,12 +26,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   });
   if (!invoice?.receiptHash || !invoice.paidAt) return new Response("Not found", { status: 404 });
 
-  const school = await prisma.school.findUnique({ where: { id: invoice.schoolId }, select: { name: true } });
+  const school = await prisma.school.findUnique({ where: { id: invoice.schoolId }, select: { name: true, currency: true } });
   const pdf = await buildReceiptPdf({
     schoolName: school?.name ?? "",
     studentName: `${invoice.student.firstName} ${invoice.student.lastName}`,
     label: invoice.label,
-    amount: formatEuros(invoice.amountCents),
+    amount: formatMoney(invoice.amountCents, school?.currency ?? "EUR", "code"),
     paidAt: invoice.paidAt,
     invoiceId: invoice.id,
     hash: invoice.receiptHash,

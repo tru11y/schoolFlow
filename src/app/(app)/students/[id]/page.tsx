@@ -2,8 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { can } from "@/core/domain/rbac/role";
-import { formatEuros } from "@/core/domain/finance/receipt";
+import { formatMoney } from "@/core/domain/finance/money";
+import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { STATUS_LABELS, WEEKDAYS } from "@/core/domain/students/student";
+import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
@@ -30,6 +32,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
 
   const db = tenantPrisma(principal);
   const showFinance = can(principal.role, "finance:read");
+  const currency = await getSchoolCurrency(principal.schoolId);
 
   const student = await db.user.findFirst({
     where: { id: id.data, role: "STUDENT", deletedAt: null },
@@ -44,12 +47,19 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
   if (!student) notFound();
 
   const { profile } = student;
-  const [rawSlots, teachers] = await Promise.all([
+  const levelOptions = await listLevels(db);
+  const [rawSlots, chapterRows, teachers] = await Promise.all([
     db.timetableSlot.findMany({
       where: { OR: [{ studentId: student.id }, ...(profile ? [{ level: profile.level, studentId: null }] : [])] },
       orderBy: [{ weekday: "asc" }, { startTime: "asc" }],
-      include: { teacher: { select: { firstName: true, lastName: true } } },
+      include: {
+        teacher: { select: { firstName: true, lastName: true } },
+        curriculumChapter: { select: { position: true, title: true } },
+      },
     }),
+    profile
+      ? db.curriculumChapter.findMany({ where: { level: profile.level }, orderBy: [{ subject: "asc" }, { position: "asc" }] })
+      : [],
     db.user.findMany({
       where: { role: "TEACHER", deletedAt: null },
       orderBy: { lastName: "asc" },
@@ -66,6 +76,8 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
     teacherId: s.teacherId,
     teacherName: s.teacher ? `${s.teacher.firstName} ${s.teacher.lastName}` : null,
     scope: s.studentId ? "student" : "class",
+    chapterId: s.curriculumChapterId,
+    chapterLabel: s.curriculumChapter ? `Ch. ${s.curriculumChapter.position} · ${s.curriculumChapter.title}` : null,
   }));
 
   const present = student.attendances.filter((a) => a.status === "PRESENT").length;
@@ -86,7 +98,6 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
             <>
               <dl className="mb-4 grid grid-cols-2 gap-4 text-sm">
                 <Info label="Classe" value={profile.level} />
-                <Info label="Naissance" value={profile.birthDate.toLocaleDateString("fr-FR")} />
                 <div className="col-span-2"><Info label="Adresse" value={profile.address} /></div>
               </dl>
               <ul className="mb-6 grid gap-2">
@@ -110,6 +121,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
                 <div className="mt-4">
                   <EditForm
                     id={student.id}
+                    levels={levelOptions.map((l) => l.name)}
                     initial={{ level: profile.level, address: profile.address, status: profile.status }}
                     parents={student.parents.map((p) => ({
                       name: p.name, relation: p.relation, phone: p.phone ?? "", email: p.email ?? "",
@@ -142,6 +154,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
             studentId={student.id}
             level={profile?.level ?? null}
             slots={slots}
+            chapters={chapterRows.map((c) => ({ id: c.id, label: `${c.subject} - Ch. ${c.position} : ${c.title}` }))}
             teachers={teachers.map((t) => ({ id: t.id, name: `${t.firstName} ${t.lastName}` }))}
           />
         </Card>
@@ -171,7 +184,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
                   <div>
                     <p className="font-medium">{inv.label}</p>
                     <p className="text-xs text-ink/70">
-                      Échéance {inv.dueDate.toLocaleDateString("fr-FR")} · {formatEuros(inv.amountCents)}
+                      Échéance {inv.dueDate.toLocaleDateString("fr-FR")} · {formatMoney(inv.amountCents, currency)}
                     </p>
                   </div>
                   {inv.status === "PAID" ? (

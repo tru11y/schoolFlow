@@ -4,6 +4,8 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
+import { toMinorUnits } from "@/core/domain/finance/money";
+import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { ENROLLMENT_STATUSES, buildSchedule } from "@/core/domain/students/student";
 import { Argon2Hasher } from "@/infrastructure/auth/argon2-hasher";
 import { secureAction } from "@/presentation/secure-action";
@@ -13,12 +15,11 @@ const createInput = z.object({
   firstName: text(60),
   lastName: text(60),
   email: z.string().trim().toLowerCase().email().max(254),
-  birthDate: z.coerce.date().refine((d) => d <= new Date(), "Date dans le futur"),
   level: text(20),
   address: text(200),
   parents: parentsSchema,
   installments: z.coerce.number().int().min(1).max(12),
-  totalEuros: z.coerce.number().min(0).max(100_000),
+  total: z.coerce.number().min(0).max(100_000),
   firstDue: z.coerce.date(),
 });
 
@@ -33,7 +34,7 @@ export const createStudent = secureAction(
     permission: "user:manage",
     input: createInput,
     resourceId: (_input, data: CreateStudentResult) => (data.status === "created" ? data.id : null),
-    // No address / contact details / birth date in the audit log.
+    // No address / contact details in the audit log.
     auditMetadata: (i) => ({ email: i.email, level: i.level, installments: i.installments, parents: i.parents.length }),
   },
   async ({ input, db, principal }): Promise<CreateStudentResult> => {
@@ -43,7 +44,7 @@ export const createStudent = secureAction(
     if (await db.user.findFirst({ where: { email: input.email } })) return { status: "email_taken" };
 
     const tempPassword = randomBytes(9).toString("base64url");
-    const totalCents = Math.round(input.totalEuros * 100);
+    const totalCents = toMinorUnits(input.total, await getSchoolCurrency(schoolId));
     const schedule = totalCents > 0 ? buildSchedule(totalCents, input.installments, input.firstDue) : [];
 
     const user = await db.user.create({
@@ -55,7 +56,7 @@ export const createStudent = secureAction(
         passwordHash: await new Argon2Hasher().hash(tempPassword),
         schoolId,
         profile: {
-          create: { schoolId, birthDate: input.birthDate, level: input.level, address: input.address, status: "ACTIVE" },
+          create: { schoolId, level: input.level, address: input.address, status: "ACTIVE" },
         },
         parents: { create: input.parents.map((p, position) => ({ schoolId, position, ...p })) },
         invoices: {
@@ -123,7 +124,7 @@ export const saveSlot = secureAction(
     permission: "user:manage",
     input: slotSchema,
     resourceId: (input) => input.id ?? null,
-    auditMetadata: (i) => ({ studentId: i.studentId, scope: i.scope, weekday: i.weekday, subject: i.subject }),
+    auditMetadata: (i) => ({ studentId: i.studentId, scope: i.scope, weekday: i.weekday, subject: i.subject, start: i.startTime, end: i.endTime }),
   },
   async ({ input, db, principal }) => {
     const schoolId = principal.schoolId;
@@ -139,6 +140,10 @@ export const saveSlot = secureAction(
       throw new ForbiddenError("teacher:not-found");
     }
     const level = student.profile?.level ?? null;
+    if (input.chapterId) {
+      const chapter = await db.curriculumChapter.findFirst({ where: { id: input.chapterId }, select: { level: true } });
+      if (!chapter || chapter.level !== level) throw new ForbiddenError("chapter:not-found");
+    }
     if (input.scope === "class" && !level) throw new ForbiddenError("student:no-level");
 
     const data = {
@@ -148,6 +153,7 @@ export const saveSlot = secureAction(
       subject: input.subject,
       teacherId: input.teacherId ?? null,
       room: input.room ?? null,
+      curriculumChapterId: input.chapterId ?? null,
       level: input.scope === "class" ? level : null,
       studentId: input.scope === "student" ? student.id : null,
     };

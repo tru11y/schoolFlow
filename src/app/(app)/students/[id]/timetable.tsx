@@ -3,6 +3,9 @@
 import { useRef, useState, useTransition } from "react";
 import { WEEKDAYS } from "@/core/domain/students/student";
 import { hourRange, subjectTone, toMinutes } from "@/core/domain/students/timetable";
+
+const DURATIONS = [{ label: "45 min", min: 45 }, { label: "1 h", min: 60 }, { label: "1 h 30", min: 90 }, { label: "2 h", min: 120 }];
+const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 import { deleteSlot, saveSlot } from "../actions";
 
 export interface SlotView {
@@ -15,6 +18,8 @@ export interface SlotView {
   teacherId: string | null;
   teacherName: string | null;
   scope: "class" | "student";
+  chapterId: string | null;
+  chapterLabel: string | null;
 }
 
 interface Props {
@@ -22,17 +27,20 @@ interface Props {
   level: string | null;
   slots: SlotView[];
   teachers: { id: string; name: string }[];
+  chapters: { id: string; label: string }[];
 }
 
 const HOUR_PX = 56;
 const field =
   "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
 
-export function Timetable({ studentId, level, slots, teachers }: Props) {
+export function Timetable({ studentId, level, slots, teachers, chapters }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [editing, setEditing] = useState<SlotView | null>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState("08:30");
+  const [endTime, setEndTime] = useState("10:00");
 
   const days = slots.some((s) => s.weekday >= 6) ? 6 : 5;
   const { from, to } = hourRange(slots);
@@ -40,6 +48,8 @@ export function Timetable({ studentId, level, slots, teachers }: Props) {
 
   const open = (slot: SlotView | null) => {
     setEditing(slot);
+    setStartTime(slot?.startTime ?? "08:30");
+    setEndTime(slot?.endTime ?? "10:00");
     setError(null);
     dialog.current?.showModal();
   };
@@ -96,6 +106,7 @@ export function Timetable({ studentId, level, slots, teachers }: Props) {
                       <span className="block truncate font-semibold">{s.subject}</span>
                       <span className="block truncate opacity-80">{s.startTime}–{s.endTime}{s.room ? ` · ${s.room}` : ""}</span>
                       {height > 60 && s.teacherName ? <span className="block truncate opacity-80">{s.teacherName}</span> : null}
+                      {height > 80 && s.chapterLabel ? <span className="block truncate opacity-70">{s.chapterLabel}</span> : null}
                     </button>
                   );
                 })}
@@ -131,16 +142,35 @@ export function Timetable({ studentId, level, slots, teachers }: Props) {
           </label>
           <div className="grid grid-cols-2 gap-3">
             <label className="grid gap-1 text-sm">Début
-              <input name="startTime" type="time" required defaultValue={editing?.startTime ?? "08:30"} className={field} />
+              <input name="startTime" type="time" step={300} required value={startTime} onChange={(e) => setStartTime(e.target.value)} className={field} />
             </label>
             <label className="grid gap-1 text-sm">Fin
-              <input name="endTime" type="time" required defaultValue={editing?.endTime ?? "10:00"} className={field} />
+              <input name="endTime" type="time" step={300} required value={endTime} onChange={(e) => setEndTime(e.target.value)} className={field} />
             </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Durée du créneau">
+            <span className="text-xs text-ink/70">Durée :</span>
+            {DURATIONS.map((d) => (
+              <button
+                key={d.min}
+                type="button"
+                onClick={() => setEndTime(hhmm(Math.min(toMinutes(startTime) + d.min, 23 * 60 + 59)))}
+                className="min-h-9 rounded-xl bg-canvas px-3 text-xs ring-1 ring-white/15 outline-none hover:bg-raised focus-visible:ring-2 focus-visible:ring-accent active:scale-95"
+              >
+                {d.label}
+              </button>
+            ))}
           </div>
           <label className="grid gap-1 text-sm">Professeur
             <select name="teacherId" defaultValue={editing?.teacherId ?? ""} className={field}>
               <option value="">—</option>
               {teachers.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">Chapitre du programme
+            <select name="chapterId" defaultValue={editing?.chapterId ?? ""} className={field}>
+              <option value="">—</option>
+              {chapters.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
             </select>
           </label>
           <label className="grid gap-1 text-sm">Salle

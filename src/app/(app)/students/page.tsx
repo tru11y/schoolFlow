@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
-import { ENROLLMENT_STATUSES, LEVELS, STATUS_LABELS, type EnrollmentStatusValue } from "@/core/domain/students/student";
+import { ENROLLMENT_STATUSES, STATUS_LABELS, type EnrollmentStatusValue } from "@/core/domain/students/student";
+import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
@@ -16,9 +17,10 @@ export default async function StudentsPage({
   const principal = await requirePagePermission("user:manage");
   const { q, level, status } = await searchParams;
   const query = q?.trim().slice(0, 80);
+  const levels = await listLevels(tenantPrisma(principal));
 
   const profile: Prisma.StudentProfileWhereInput = {
-    ...(level && LEVELS.some((l) => l === level) ? { level } : {}),
+    ...(level && levels.some((l) => l.name === level) ? { level } : {}),
     ...(isStatus(status) ? { status } : {}),
   };
   const students = await tenantPrisma(principal).user.findMany({
@@ -56,11 +58,30 @@ export default async function StudentsPage({
         </Link>
       </div>
 
+      <nav aria-label="Filtrer par niveau" className="mb-3 flex gap-2 overflow-x-auto pb-1">
+        {[{ id: "all", name: "" }, ...levels].map((l) => {
+          const params = new URLSearchParams({ ...(query ? { q: query } : {}), ...(status ? { status } : {}), ...(l.name ? { level: l.name } : {}) });
+          const active = (level ?? "") === l.name;
+          return (
+            <Link
+              key={l.id}
+              href={`/students${params.size ? `?${params}` : ""}`}
+              aria-current={active ? "page" : undefined}
+              className={`min-h-9 whitespace-nowrap rounded-2xl px-4 py-2 text-sm outline-none transition focus-visible:ring-2 focus-visible:ring-accent active:scale-95 ${
+                active ? "bg-accent font-medium text-canvas" : "bg-surface hover:bg-raised"
+              }`}
+            >
+              {l.name || "Tous"}
+            </Link>
+          );
+        })}
+      </nav>
+
       <form method="get" role="search" className="mb-4 flex flex-wrap gap-3">
         <input name="q" defaultValue={query} placeholder="Rechercher un nom, un e-mail…" aria-label="Recherche" className={`${field} min-w-60 flex-1`} />
         <select name="level" defaultValue={level ?? ""} aria-label="Classe" className={field}>
           <option value="">Toutes les classes</option>
-          {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+          {levels.map((l) => <option key={l.id} value={l.name}>{l.name}</option>)}
         </select>
         <select name="status" defaultValue={status ?? ""} aria-label="Statut" className={field}>
           <option value="">Tous les statuts</option>

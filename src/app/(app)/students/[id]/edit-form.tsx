@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ENROLLMENT_STATUSES, LEVELS, STATUS_LABELS, type EnrollmentStatusValue } from "@/core/domain/students/student";
+import { ENROLLMENT_STATUSES, STATUS_LABELS, type EnrollmentStatusValue } from "@/core/domain/students/student";
 import { updateStudent } from "../actions";
 import { ParentsFields, readParents, type ParentValue } from "../parents-fields";
 
@@ -12,9 +12,10 @@ interface Props {
   id: string;
   initial: { level: string; address: string; status: EnrollmentStatusValue };
   parents: ParentValue[];
+  levels: string[];
 }
 
-export function EditForm({ id, initial, parents }: Props) {
+export function EditForm({ id, initial, parents, levels }: Props) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
@@ -32,7 +33,7 @@ export function EditForm({ id, initial, parents }: Props) {
     >
       <label className="grid gap-1 text-sm">Classe
         <select name="level" defaultValue={initial.level} className={field}>
-          {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+          {(levels.includes(initial.level) ? levels : [initial.level, ...levels]).map((l) => <option key={l} value={l}>{l}</option>)}
         </select>
       </label>
       <label className="grid gap-1 text-sm">Statut

@@ -25,6 +25,8 @@ enum AuditOutcome {
 model School {
   id        String    @id @default(uuid()) @db.Uuid
   name      String
+  /// FCFA | EUR | USD | CAD - amounts are stored in minor units of this currency (FCFA: no decimals).
+  currency  String    @default("EUR")
   createdAt DateTime  @default(now())
   deletedAt DateTime?
   users     User[]
@@ -43,7 +45,6 @@ model StudentProfile {
   schoolId  String           @db.Uuid
   userId    String           @unique @db.Uuid
   user      User             @relation("ProfileUser", fields: [userId], references: [id], onDelete: Restrict)
-  birthDate DateTime         @db.Date
   level     String
   address   String
   status    EnrollmentStatus @default(ACTIVE)
@@ -76,21 +77,23 @@ model ParentContact {
 
 /// Weekly slot for a whole class (`level`) or for a single student (`studentId`); exactly one is set.
 model TimetableSlot {
-  id        String              @id @default(uuid()) @db.Uuid
-  schoolId  String              @db.Uuid
-  level     String?
-  studentId String?             @db.Uuid
-  student   User?               @relation("SlotStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  id                  String              @id @default(uuid()) @db.Uuid
+  schoolId            String              @db.Uuid
+  level               String?
+  studentId           String?             @db.Uuid
+  student             User?               @relation("SlotStudent", fields: [studentId], references: [id], onDelete: Restrict)
   /// 1 = Monday ... 7 = Sunday
-  weekday   Int
-  startTime String
-  endTime   String
-  subject   String
-  teacherId String?             @db.Uuid
-  teacher   User?               @relation("SlotTeacher", fields: [teacherId], references: [id], onDelete: Restrict)
-  room      String?
-  createdAt DateTime            @default(now())
-  sessions  AttendanceSession[]
+  weekday             Int
+  startTime           String
+  endTime             String
+  subject             String
+  teacherId           String?             @db.Uuid
+  teacher             User?               @relation("SlotTeacher", fields: [teacherId], references: [id], onDelete: Restrict)
+  room                String?
+  createdAt           DateTime            @default(now())
+  sessions            AttendanceSession[]
+  curriculumChapter   CurriculumChapter?  @relation(fields: [curriculumChapterId], references: [id])
+  curriculumChapterId String?             @db.Uuid
 
   @@index([schoolId, level])
   @@index([studentId])
@@ -110,6 +113,38 @@ model GuardianLink {
   @@unique([parentId, studentId])
   @@index([schoolId])
   @@map("guardian_links")
+}
+
+/// Class level managed by admins. Other tables reference it by `name` (renames cascade in the application).
+model GradeLevel {
+  id         String   @id @default(uuid()) @db.Uuid
+  schoolId   String   @db.Uuid
+  name       String
+  position   Int      @default(0)
+  /// Optional monthly fee, in minor units of the school currency.
+  monthlyFee Int?
+  createdAt  DateTime @default(now())
+
+  @@unique([schoolId, name])
+  @@map("grade_levels")
+}
+
+/// Reinforcement curriculum: ordered chapters per class level and subject.
+model CurriculumChapter {
+  id            String          @id @default(uuid()) @db.Uuid
+  schoolId      String          @db.Uuid
+  level         String
+  subject       String
+  position      Int
+  title         String
+  completedAt   DateTime?
+  completedById String?         @db.Uuid
+  createdAt     DateTime        @default(now())
+  slots         TimetableSlot[]
+
+  @@unique([schoolId, level, subject, position])
+  @@index([schoolId, level])
+  @@map("curriculum_chapters")
 }
 
 model Course {

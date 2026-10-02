@@ -28,5 +28,6 @@ export const slotSchema = z
     subject: text(60),
     teacherId: z.string().uuid().optional().or(z.literal("").transform(() => undefined)),
     room: optional(30),
+    chapterId: z.string().uuid().optional().or(z.literal("").transform(() => undefined)),
   })
   .refine((s) => toMinutes(s.endTime) > toMinutes(s.startTime), { message: "Fin avant début", path: ["endTime"] });

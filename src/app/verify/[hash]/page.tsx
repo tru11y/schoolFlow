@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { formatEuros, receiptHash } from "@/core/domain/finance/receipt";
+import { formatMoney } from "@/core/domain/finance/money";
+import { receiptHash } from "@/core/domain/finance/receipt";
 import { prisma } from "@/infrastructure/db/prisma";
 import { Badge, Card } from "@/presentation/components/ui";
 
@@ -23,7 +24,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ hash: s
       paidAt: invoice.paidAt,
     }) === hash;
 
-  const school = invoice ? await prisma.school.findUnique({ where: { id: invoice.schoolId }, select: { name: true } }) : null;
+  const school = invoice ? await prisma.school.findUnique({ where: { id: invoice.schoolId }, select: { name: true, currency: true } }) : null;
 
   return (
     <main className="grid min-h-dvh place-items-center p-6">
@@ -31,7 +32,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ hash: s
         {authentic && invoice?.paidAt ? (
           <div className="grid gap-3">
             <Badge tone="success">Reçu authentique</Badge>
-            <h1 className="text-2xl font-semibold">{formatEuros(invoice.amountCents)}</h1>
+            <h1 className="text-2xl font-semibold">{formatMoney(invoice.amountCents, school?.currency ?? "EUR")}</h1>
             <p>{invoice.label}</p>
             <p className="text-sm text-ink/70">
               {school?.name} · {invoice.student.firstName} {invoice.student.lastName.charAt(0)}. ·{" "}
