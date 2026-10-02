@@ -97,6 +97,21 @@ model TimetableSlot {
   @@map("timetable_slots")
 }
 
+/// Links a PARENT account to the student(s) it follows.
+model GuardianLink {
+  id        String   @id @default(uuid()) @db.Uuid
+  schoolId  String   @db.Uuid
+  parentId  String   @db.Uuid
+  parent    User     @relation("GuardianParent", fields: [parentId], references: [id], onDelete: Restrict)
+  studentId String   @db.Uuid
+  student   User     @relation("GuardianStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  createdAt DateTime @default(now())
+
+  @@unique([parentId, studentId])
+  @@index([schoolId])
+  @@map("guardian_links")
+}
+
 model Course {
   id          String             @id @default(uuid()) @db.Uuid
   schoolId    String             @db.Uuid
@@ -220,6 +235,12 @@ model User {
   role             Role
   firstName        String
   lastName         String
+  phone            String?
+  /// Reversible deactivation (distinct from soft delete): blocks login and invalidates sessions.
+  isActive         Boolean             @default(true)
+  /// Teachers only
+  specialty        String?
+  classLevels      String[]            @default([])
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   deletedAt        DateTime?
@@ -233,6 +254,8 @@ model User {
   studentSlots     TimetableSlot[]     @relation("SlotStudent")
   taughtSlots      TimetableSlot[]     @relation("SlotTeacher")
   recordedSessions AttendanceSession[] @relation("SessionRecorder")
+  guardianOf       GuardianLink[]      @relation("GuardianParent")
+  guardians        GuardianLink[]      @relation("GuardianStudent")
 
   @@index([schoolId, role])
   @@map("users")

@@ -10,6 +10,7 @@ const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/compta", label: "Comptabilité", icon: "💳", permission: "finance:read" },
   { href: "/cahier-de-texte", label: "Cahier de texte", icon: "📓", permission: "homework:read" },
   { href: "/absences", label: "Absences", icon: "🙋", permission: "attendance:read" },
+  { href: "/admin/users", label: "Utilisateurs", icon: "👥", permission: "user:manage" },
   { href: "/admin/audit", label: "Journal d'audit", icon: "🛡️", permission: "audit:read" },
 ];
 

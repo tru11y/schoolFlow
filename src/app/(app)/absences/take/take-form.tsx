@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useState, useTransition } from "react";
 import { takeAttendance } from "./actions";
 
@@ -115,17 +115,7 @@ export function TakeForm({ level, timing, students }: Props) {
           done ? "bg-mint text-canvas" : "bg-accent text-canvas"
         }`}
       >
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span
-            key={pending ? "p" : done ? "d" : "i"}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="inline-block"
-          >
-            {pending ? "Enregistrement…" : done ? `✓ ${done}` : "Valider l'appel"}
-          </motion.span>
-        </AnimatePresence>
+        {pending ? "Enregistrement…" : done ? `✓ ${done}` : "Valider l'appel"}
       </motion.button>
     </div>
   );

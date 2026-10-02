@@ -10,10 +10,12 @@
     "test": "vitest run",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
-    "db:seed": "prisma db seed",
+    "db:seed": "tsx prisma/seed.ts",
     "db:deploy": "prisma migrate deploy",
     "postinstall": "prisma generate",
-    "deploy": "firebase deploy"
+    "deploy": "firebase deploy",
+    "db:seed:live": "tsx prisma/seed.ts --live",
+    "db:seed:prod": "tsx prisma/seed.ts --prod"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

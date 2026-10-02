@@ -7,7 +7,7 @@ import { prisma } from "../db/prisma";
 export class PrismaUserRepository implements UserRepository {
   async findActiveByEmail(email: string): Promise<AuthUser | null> {
     const user = await prisma.user.findFirst({
-      where: { email, deletedAt: null },
+      where: { email, deletedAt: null, isActive: true },
       select: { id: true, schoolId: true, role: true, passwordHash: true },
     });
     return user ? { ...user, role: user.role as Role } : null;
@@ -25,7 +25,7 @@ export class PrismaSessionRepository implements SessionRepository {
 
   async findByTokenHash(tokenHash: string): Promise<SessionView | null> {
     const s = await prisma.session.findFirst({
-      where: { tokenHash, user: { deletedAt: null } },
+      where: { tokenHash, user: { deletedAt: null, isActive: true } },
       select: {
         id: true, userId: true, createdAt: true, lastSeenAt: true, expiresAt: true, revokedAt: true,
         user: { select: { schoolId: true, role: true } },
