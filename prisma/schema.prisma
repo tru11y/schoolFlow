@@ -92,6 +92,7 @@ model TimetableSlot {
   room                String?
   createdAt           DateTime            @default(now())
   sessions            AttendanceSession[]
+  logbookEntries      LogbookEntry[]
   curriculumChapter   CurriculumChapter?  @relation(fields: [curriculumChapterId], references: [id])
   curriculumChapterId String?             @db.Uuid
 
@@ -131,16 +132,17 @@ model GradeLevel {
 
 /// Reinforcement curriculum: ordered chapters per class level and subject.
 model CurriculumChapter {
-  id            String          @id @default(uuid()) @db.Uuid
-  schoolId      String          @db.Uuid
-  level         String
-  subject       String
-  position      Int
-  title         String
-  completedAt   DateTime?
-  completedById String?         @db.Uuid
-  createdAt     DateTime        @default(now())
-  slots         TimetableSlot[]
+  id             String          @id @default(uuid()) @db.Uuid
+  schoolId       String          @db.Uuid
+  level          String
+  subject        String
+  position       Int
+  title          String
+  completedAt    DateTime?
+  completedById  String?         @db.Uuid
+  createdAt      DateTime        @default(now())
+  slots          TimetableSlot[]
+  logbookEntries LogbookEntry[]
 
   @@unique([schoolId, level, subject, position])
   @@index([schoolId, level])
@@ -287,17 +289,33 @@ model AttendanceSession {
   @@map("attendance_sessions")
 }
 
-model Homework {
-  id        String   @id @default(uuid()) @db.Uuid
-  schoolId  String   @db.Uuid
-  authorId  String   @db.Uuid
-  author    User     @relation("HomeworkAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  title     String
-  content   String
-  createdAt DateTime @default(now())
+/// One logged lesson of a class: what was taught, the homework, and the curriculum chapter covered.
+model LogbookEntry {
+  id          String             @id @default(uuid()) @db.Uuid
+  schoolId    String             @db.Uuid
+  /// Class level name (see GradeLevel)
+  level       String
+  subject     String
+  teacherId   String             @db.Uuid
+  teacher     User               @relation("LogbookAuthor", fields: [teacherId], references: [id], onDelete: Restrict)
+  slotId      String?            @db.Uuid
+  slot        TimetableSlot?     @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  date        DateTime           @db.Date
+  /// "HH:MM", copied from the slot when there is one
+  startTime   String?
+  endTime     String?
+  title       String
+  content     String
+  homework    String?
+  homeworkDue DateTime?          @db.Date
+  chapterId   String?            @db.Uuid
+  chapter     CurriculumChapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
-  @@index([schoolId, createdAt])
-  @@map("homeworks")
+  @@unique([slotId, date])
+  @@index([schoolId, level, date])
+  @@map("logbook_entries")
 }
 
 model User {
@@ -323,7 +341,7 @@ model User {
   payments         Payment[]           @relation("PaymentStudent")
   recordedPayments Payment[]           @relation("PaymentRecorder")
   attendances      AttendanceRecord[]  @relation("AttendanceStudent")
-  homeworks        Homework[]          @relation("HomeworkAuthor")
+  logbookEntries   LogbookEntry[]      @relation("LogbookAuthor")
   profile          StudentProfile?     @relation("ProfileUser")
   enrollments      CourseEnrollment[]  @relation("EnrollmentStudent")
   parents          ParentContact[]     @relation("ParentStudent")

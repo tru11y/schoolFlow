@@ -16,6 +16,8 @@ interface Props {
   level: string;
   timing: TimingView;
   students: { id: string; name: string; status: Status }[];
+  /** School-local date, used to pre-fill the logbook entry */
+  today: string;
 }
 
 const OPTIONS: { value: Status; label: string; icon: string; on: string }[] = [
@@ -24,10 +26,11 @@ const OPTIONS: { value: Status; label: string; icon: string; on: string }[] = [
   { value: "LATE", label: "Retard", icon: "⏱", on: "bg-amber-300 text-canvas" },
 ];
 
-export function TakeForm({ level, timing, students }: Props) {
+export function TakeForm({ level, timing, students, today }: Props) {
   const [values, setValues] = useState<Record<string, Status>>(Object.fromEntries(students.map((s) => [s.id, s.status])));
   const [pending, start] = useTransition();
   const [done, setDone] = useState<string | null>(null);
+  const [logbookHref, setLogbookHref] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const count = (status: Status) => Object.values(values).filter((v) => v === status).length;
@@ -43,6 +46,10 @@ export function TakeForm({ level, timing, students }: Props) {
         level,
         records: Object.entries(values).map(([studentId, status]) => ({ studentId, status })),
       });
+      if (res.ok && res.data.subject) {
+        const p = new URLSearchParams({ new: "1", level, subject: res.data.subject, date: today, ...(res.data.slotId ? { slot: res.data.slotId } : {}) });
+        setLogbookHref(`/cahier-de-texte?${p}`);
+      }
       if (res.ok) setDone(res.data.isOverdue ? "Appel enregistré (signalé hors créneau)" : "Appel enregistré");
       else setError(res.error.message);
     });
@@ -117,6 +124,15 @@ export function TakeForm({ level, timing, students }: Props) {
       >
         {pending ? "Enregistrement…" : done ? `✓ ${done}` : "Valider l'appel"}
       </motion.button>
+
+      {done && logbookHref ? (
+        <a
+          href={logbookHref}
+          className="grid min-h-12 place-items-center rounded-2xl bg-peach/15 px-5 font-medium text-peach outline-none transition hover:bg-peach/25 focus-visible:ring-2 focus-visible:ring-accent active:scale-95"
+        >
+          Remplir le cahier de texte
+        </a>
+      ) : null}
     </div>
   );
 }

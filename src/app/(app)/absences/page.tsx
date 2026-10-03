@@ -65,6 +65,14 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    {s.subject ? (
+                      <Link
+                        href={`/cahier-de-texte?${new URLSearchParams({ new: "1", level: s.level, subject: s.subject, date: s.date.toISOString().slice(0, 10), ...(s.slotId ? { slot: s.slotId } : {}) })}`}
+                        className="rounded-xl bg-peach/15 px-3 py-1 text-xs text-peach outline-none hover:bg-peach/25 focus-visible:ring-2 focus-visible:ring-accent"
+                      >
+                        Remplir le cahier de texte
+                      </Link>
+                    ) : null}
                     {s.isOverdue ? (
                       <Badge tone="warning">
                         Hors créneau{s.offsetMinutes ? ` ${s.offsetMinutes > 0 ? "+" : ""}${s.offsetMinutes} min` : ""}

@@ -19,7 +19,7 @@ export default async function DashboardPage() {
     db.user.count({ where: { role: "STUDENT", deletedAt: null } }),
     db.attendanceRecord.count({ where: { date: todayUtc(), status: "PRESENT" } }),
     db.attendanceRecord.count({ where: { date: todayUtc() } }),
-    db.homework.count(),
+    db.logbookEntry.count(),
     showFinance
       ? db.invoice.findMany({ where: { deletedAt: null, carriedToInvoiceId: null }, select: { amountCents: true, paidCents: true } })
       : null,
@@ -37,7 +37,7 @@ export default async function DashboardPage() {
           label="Taux de présence du jour"
           value={recorded === 0 ? "—" : `${Math.round((present / recorded) * 100)} %`}
         />
-        <StatCard index={2} icon="📓" tone="lilac" label="Notes au cahier de texte" value={String(homeworks)} />
+        <StatCard index={2} icon="📓" tone="lilac" label="Séances au cahier de texte" value={String(homeworks)} />
         {pending ? (
           <StatCard index={3} icon="💳" tone="mint" label="Impayés" value={formatMoney(pending.reduce((sum, i) => sum + remaining(i), 0), currency)} />
         ) : null}

@@ -306,11 +306,28 @@ async function seedDemo() {
     }
   }
 
-  await prisma.homework.createMany({
-    data: [
-      { schoolId: school.id, authorId: marc.id, title: "Maths 3e - Équations et inéquations", content: "Reprendre le chapitre 4.\n\n- Exercices 12 à 18 page 87\n- Apprendre les méthodes de résolution\n\nContrôle jeudi prochain." },
-      { schoolId: school.id, authorId: camille.id, title: "Français 4e - Lecture suivie", content: "Lire les chapitres 5 et 6 du roman étudié.\n\nPréparer un résumé de 10 lignes et relever trois passages descriptifs." },
-    ],
+  // --- Logbook: lessons already given (past days), linked to the curriculum chapters they covered
+  const allChapters = await prisma.curriculumChapter.findMany({ where: { schoolId: school.id } });
+  const chapterOf = (level: string, subject: string, position: number) =>
+    allChapters.find((c) => c.level === level && c.subject === subject && c.position === position)?.id ?? null;
+  const daysAgo = (n: number) => new Date(date(today).getTime() - n * 86_400_000);
+
+  const lessons: { level: string; subject: string; teacher: { id: string }; back: number; start: string; end: string; position: number; title: string; content: string; homework: string; due: number }[] = [
+    { level: "3e", subject: "Mathématiques", teacher: marc, back: 9, start: "08:00", end: "09:30", position: 1, title: "Identités remarquables", content: "Rappel des trois identités remarquables, développement et factorisation d'expressions. Entraînement sur des exemples numériques.", homework: "Exercices 12 à 16 p. 45. Apprendre les trois identités.", due: -7 },
+    { level: "3e", subject: "Mathématiques", teacher: marc, back: 4, start: "08:00", end: "09:30", position: 2, title: "Équations du premier degré", content: "Résolution d'équations et d'inéquations du premier degré, mise en équation de problèmes simples.", homework: "Fiche de révision n°2, exercices 5 et 6.", due: -1 },
+    { level: "3e", subject: "Français", teacher: camille, back: 6, start: "09:45", end: "11:15", position: 1, title: "Le récit autobiographique", content: "Lecture analytique d'un extrait d'autobiographie : pacte autobiographique, narrateur et point de vue.", homework: "Rédiger un court portrait de soi (10 lignes).", due: -3 },
+    { level: "3e", subject: "Histoire-Géo", teacher: camille, back: 5, start: "14:00", end: "15:30", position: 1, title: "La Première Guerre mondiale", content: "Causes du conflit, guerre de tranchées et bilan humain. Étude d'une carte des fronts.", homework: "Apprendre la chronologie 1914-1918.", due: -2 },
+    { level: "4e", subject: "Mathématiques", teacher: marc, back: 8, start: "09:45", end: "11:15", position: 1, title: "Nombres relatifs et fractions", content: "Opérations sur les nombres relatifs, comparaison et simplification de fractions.", homework: "Exercices 3 à 9 p. 22.", due: -6 },
+    { level: "4e", subject: "Mathématiques", teacher: marc, back: 2, start: "09:45", end: "11:15", position: 2, title: "Puissances et notation scientifique", content: "Règles de calcul sur les puissances, écriture scientifique de grands et petits nombres.", homework: "Exercices 14 à 18 p. 31, contrôle la semaine prochaine.", due: -5 },
+    { level: "4e", subject: "Français", teacher: camille, back: 3, start: "08:00", end: "09:30", position: 1, title: "Le roman d'aventures", content: "Caractéristiques du roman d'aventures : schéma narratif, héros et péripéties. Lecture du chapitre 3.", homework: "Lire les chapitres 4 et 5 et résumer en 10 lignes.", due: -2 },
+    { level: "4e", subject: "Français", teacher: camille, back: 1, start: "09:45", end: "11:15", position: 2, title: "Le théâtre classique", content: "Découverte des règles du théâtre classique : unités, répliques et didascalies.", homework: "Apprendre la tirade distribuée en classe.", due: -4 },
+  ];
+  await prisma.logbookEntry.createMany({
+    data: lessons.map((l) => ({
+      schoolId: school.id, level: l.level, subject: l.subject, teacherId: l.teacher.id, date: daysAgo(l.back),
+      startTime: l.start, endTime: l.end, title: l.title, content: l.content, homework: l.homework,
+      homeworkDue: new Date(date(today).getTime() - l.due * 86_400_000), chapterId: chapterOf(l.level, l.subject, l.position),
+    })),
   });
 }
 

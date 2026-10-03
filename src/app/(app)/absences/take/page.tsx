@@ -64,6 +64,7 @@ export default async function TakeAttendancePage({ searchParams }: { searchParam
       <TakeForm
         key={level}
         level={level}
+        today={resolved.date.toISOString().slice(0, 10)}
         timing={describeTiming(resolved, principal.role)}
         students={students.map((s) => ({
           id: s.id,
