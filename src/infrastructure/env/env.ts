@@ -7,6 +7,7 @@ const schema = z.object({
   SESSION_SECRET: z.string().min(32),
   AUDIT_HMAC_KEY: z.string().min(32),
   DEFAULT_CURRENCY: z.enum(CURRENCY_CODES).default("EUR"),
+  CRON_SECRET: z.string().min(16).optional(),
   APP_URL: z.string().url(),
   AUTH_LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   AUTH_LOGIN_IP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(30),

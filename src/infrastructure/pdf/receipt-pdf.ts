@@ -6,8 +6,9 @@ export interface ReceiptPdfData {
   studentName: string;
   label: string;
   amount: string;
+  method: string;
   paidAt: Date;
-  invoiceId: string;
+  reference: string;
   hash: string;
   verifyUrl: string;
 }
@@ -31,14 +32,15 @@ export async function buildReceiptPdf(d: ReceiptPdfData): Promise<Uint8Array> {
     ["Eleve", d.studentName],
     ["Objet", d.label],
     ["Montant regle", d.amount],
+    ["Mode de reglement", d.method],
     ["Date de paiement", d.paidAt.toLocaleDateString("fr-FR")],
-    ["Reference", d.invoiceId],
+    ["Reference", d.reference],
   ];
-  let y = 680;
+  let y = 690;
   for (const [k, v] of rows) {
     page.drawText(k, { x: 48, y, size: 10, font, color: muted });
     page.drawText(safe(v), { x: 48, y: y - 18, size: 14, font: bold, color: ink });
-    y -= 56;
+    y -= 52;
   }
 
   const qr = await pdf.embedPng(await QRCode.toBuffer(d.verifyUrl, { margin: 1, width: 240 }));

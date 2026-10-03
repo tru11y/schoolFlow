@@ -1,5 +1,6 @@
 import { localParts } from "@/core/domain/attendance/policy";
 import { can } from "@/core/domain/rbac/role";
+import { remaining } from "@/core/domain/finance/billing";
 import { formatMoney } from "@/core/domain/finance/money";
 import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
@@ -20,7 +21,7 @@ export default async function DashboardPage() {
     db.attendanceRecord.count({ where: { date: todayUtc() } }),
     db.homework.count(),
     showFinance
-      ? db.invoice.aggregate({ _sum: { amountCents: true }, where: { status: "PENDING", deletedAt: null } })
+      ? db.invoice.findMany({ where: { deletedAt: null, carriedToInvoiceId: null }, select: { amountCents: true, paidCents: true } })
       : null,
   ]);
 
@@ -38,7 +39,7 @@ export default async function DashboardPage() {
         />
         <StatCard index={2} icon="📓" tone="lilac" label="Notes au cahier de texte" value={String(homeworks)} />
         {pending ? (
-          <StatCard index={3} icon="💳" tone="mint" label="Impayés" value={formatMoney(pending._sum.amountCents ?? 0, currency)} />
+          <StatCard index={3} icon="💳" tone="mint" label="Impayés" value={formatMoney(pending.reduce((sum, i) => sum + remaining(i), 0), currency)} />
         ) : null}
       </div>
       <Card className="mt-6">

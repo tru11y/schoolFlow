@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { can } from "@/core/domain/rbac/role";
+import { localParts } from "@/core/domain/attendance/policy";
+import { effectiveStatus } from "@/core/domain/finance/billing";
 import { formatMoney } from "@/core/domain/finance/money";
 import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { STATUS_LABELS, WEEKDAYS } from "@/core/domain/students/student";
@@ -12,6 +14,13 @@ import { Badge, Card, PageTitle } from "@/presentation/components/ui";
 import { STATUS_TONES } from "../status-tones";
 import { EditForm } from "./edit-form";
 import { Timetable, type SlotView } from "./timetable";
+
+const INVOICE_VIEW = {
+  PAID: { label: "Payée", tone: "success" },
+  PARTIAL: { label: "Partielle", tone: "info" },
+  PENDING: { label: "Impayée", tone: "warning" },
+  OVERDUE: { label: "En retard", tone: "danger" },
+} as const;
 
 const ATT_LABELS = { PRESENT: "Présent", ABSENT: "Absent", LATE: "Retard" } as const;
 const ATT_TONES = { PRESENT: "success", ABSENT: "danger", LATE: "warning" } as const;
@@ -42,11 +51,13 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
       attendances: { orderBy: { date: "desc" }, take: 30 },
       enrollments: { include: { course: true } },
       invoices: showFinance ? { where: { deletedAt: null }, orderBy: { dueDate: "asc" } } : false,
+      payments: { orderBy: { paidAt: "desc" }, take: 10 },
     },
   });
   if (!student) notFound();
 
   const { profile } = student;
+  const todayDate = new Date(localParts(new Date()).date);
   const levelOptions = await listLevels(db);
   const [rawSlots, chapterRows, teachers] = await Promise.all([
     db.timetableSlot.findMany({
@@ -177,27 +188,47 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
 
         {showFinance && student.invoices ? (
           <Card>
-            <h2 className="mb-4 text-lg font-semibold">Paiements</h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Paiements</h2>
+              {can(principal.role, "finance:write") ? (
+                <Link href={`/compta/pay?student=${student.id}`} className="rounded-2xl bg-mint/15 px-3 py-1.5 text-sm text-mint outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                  Encaisser
+                </Link>
+              ) : null}
+            </div>
             <ul className="grid gap-2">
-              {student.invoices.map((inv) => (
-                <li key={inv.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-mint/10 px-4 py-3">
-                  <div>
-                    <p className="font-medium">{inv.label}</p>
-                    <p className="text-xs text-ink/70">
-                      Échéance {inv.dueDate.toLocaleDateString("fr-FR")} · {formatMoney(inv.amountCents, currency)}
-                    </p>
-                  </div>
-                  {inv.status === "PAID" ? (
-                    <a href={`/compta/receipt/${inv.id}`} className="rounded-2xl bg-sky/15 px-3 py-1.5 text-sm text-sky outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                      Reçu PDF
-                    </a>
-                  ) : (
-                    <Badge tone="warning">En attente</Badge>
-                  )}
-                </li>
-              ))}
+              {student.invoices.map((inv) => {
+                const status = effectiveStatus(inv, todayDate);
+                const view = inv.carriedToInvoiceId ? { label: "Reporté", tone: "info" as const } : INVOICE_VIEW[status];
+                return (
+                  <li key={inv.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-mint/10 px-4 py-3 ${inv.carriedToInvoiceId ? "opacity-60" : ""}`}>
+                    <div>
+                      <p className="font-medium">{inv.label}</p>
+                      <p className="text-xs text-ink/70">
+                        Échéance {inv.dueDate.toLocaleDateString("fr-FR")} · payé {formatMoney(inv.paidCents, currency)} / {formatMoney(inv.amountCents, currency)}
+                      </p>
+                    </div>
+                    <Badge tone={view.tone}>{view.label}</Badge>
+                  </li>
+                );
+              })}
               {student.invoices.length === 0 ? <li className="text-ink/70">Aucune facture.</li> : null}
             </ul>
+            {student.payments.length > 0 ? (
+              <>
+                <h3 className="mb-2 mt-5 text-sm font-medium text-ink/70">Reçus</h3>
+                <ul className="grid gap-2">
+                  {student.payments.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between gap-2 rounded-2xl bg-canvas px-4 py-2.5 text-sm">
+                      <span>{p.paidAt.toLocaleDateString("fr-FR")} · {formatMoney(p.amountCents, currency)}</span>
+                      <a href={`/compta/receipt/${p.id}`} className="rounded-2xl bg-sky/15 px-3 py-1.5 text-sky outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                        Reçu PDF
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
           </Card>
         ) : null}
       </div>

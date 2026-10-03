@@ -8,6 +8,9 @@ import { buildReceiptPdf } from "@/infrastructure/pdf/receipt-pdf";
 import { container } from "@/presentation/auth/container";
 import { requirePermission } from "@/presentation/auth/guards";
 
+const METHOD_LABELS = { CASH: "Especes", MOBILE_MONEY: "Mobile Money", TRANSFER: "Virement" } as const;
+
+/** `id` is a payment id. */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const id = z.string().uuid().safeParse((await params).id);
   if (!id.success) return new Response("Not found", { status: 404 });
@@ -20,34 +23,35 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     throw err;
   }
 
-  const invoice = await tenantPrisma(principal).invoice.findFirst({
-    where: { id: id.data, status: "PAID", deletedAt: null },
+  const payment = await tenantPrisma(principal).payment.findFirst({
+    where: { id: id.data },
     include: { student: { select: { firstName: true, lastName: true } } },
   });
-  if (!invoice?.receiptHash || !invoice.paidAt) return new Response("Not found", { status: 404 });
+  if (!payment) return new Response("Not found", { status: 404 });
 
-  const school = await prisma.school.findUnique({ where: { id: invoice.schoolId }, select: { name: true, currency: true } });
+  const school = await prisma.school.findUnique({ where: { id: payment.schoolId }, select: { name: true, currency: true } });
   const pdf = await buildReceiptPdf({
     schoolName: school?.name ?? "",
-    studentName: `${invoice.student.firstName} ${invoice.student.lastName}`,
-    label: invoice.label,
-    amount: formatMoney(invoice.amountCents, school?.currency ?? "EUR", "code"),
-    paidAt: invoice.paidAt,
-    invoiceId: invoice.id,
-    hash: invoice.receiptHash,
-    verifyUrl: `${env().APP_URL}/verify/${invoice.receiptHash}`,
+    studentName: `${payment.student.firstName} ${payment.student.lastName}`,
+    label: payment.description,
+    amount: formatMoney(payment.amountCents, school?.currency ?? "EUR", "code"),
+    method: METHOD_LABELS[payment.method],
+    paidAt: payment.paidAt,
+    reference: payment.id,
+    hash: payment.receiptHash,
+    verifyUrl: `${env().APP_URL}/verify/${payment.receiptHash}`,
   });
 
   await container().audit.record({
     schoolId: principal.schoolId, actorId: principal.userId, actorRole: principal.role,
-    action: "receipt.download", resource: "invoice", resourceId: invoice.id, outcome: "SUCCESS",
+    action: "receipt.download", resource: "payment", resourceId: payment.id, outcome: "SUCCESS",
     ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null, userAgent: req.headers.get("user-agent"),
   });
 
   return new Response(Buffer.from(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="recu-${invoice.id.slice(0, 8)}.pdf"`,
+      "Content-Disposition": `attachment; filename="recu-${payment.id.slice(0, 8)}.pdf"`,
       "Cache-Control": "private, no-store",
     },
   });

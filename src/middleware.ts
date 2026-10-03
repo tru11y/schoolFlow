@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE } from "@/presentation/auth/cookie-config";
 
-const isPublic = (pathname: string) => pathname === "/login" || pathname.startsWith("/verify/");
+const isPublic = (pathname: string) =>
+  pathname === "/login" || pathname.startsWith("/verify/") || pathname.startsWith("/api/cron/");
 
 /**
  * Edge gate: cheap presence check only (Prisma cannot run on the edge).

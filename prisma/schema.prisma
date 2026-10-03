@@ -177,7 +177,15 @@ model CourseEnrollment {
 
 enum InvoiceStatus {
   PENDING
+  PARTIAL
   PAID
+  OVERDUE
+}
+
+enum PaymentMethod {
+  CASH
+  MOBILE_MONEY
+  TRANSFER
 }
 
 enum AttendanceStatus {
@@ -187,23 +195,54 @@ enum AttendanceStatus {
 }
 
 model Invoice {
-  id          String        @id @default(uuid()) @db.Uuid
-  schoolId    String        @db.Uuid
-  studentId   String        @db.Uuid
-  student     User          @relation("InvoiceStudent", fields: [studentId], references: [id], onDelete: Restrict)
-  label       String
-  amountCents Int
-  dueDate     DateTime
-  status      InvoiceStatus @default(PENDING)
-  paidAt      DateTime?
-  /// SHA-256 certifying the receipt; unique so it can be verified publicly.
-  receiptHash String?       @unique @db.Char(64)
-  createdAt   DateTime      @default(now())
-  deletedAt   DateTime?
+  id                 String        @id @default(uuid()) @db.Uuid
+  schoolId           String        @db.Uuid
+  studentId          String        @db.Uuid
+  student            User          @relation("InvoiceStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  label              String
+  amountCents        Int
+  dueDate            DateTime
+  status             InvoiceStatus @default(PENDING)
+  /// Sum of the payments allocated to this invoice (minor units).
+  paidCents          Int           @default(0)
+  /// Set when fully paid.
+  paidAt             DateTime?
+  /// "YYYY-MM" for monthly invoices (one per student and month).
+  period             String?
+  /// Arrears of previous months folded into `amountCents`.
+  carriedOverCents   Int           @default(0)
+  /// Set on an old invoice whose remaining balance was folded into a newer one (excluded from balances).
+  carriedToInvoiceId String?       @db.Uuid
+  createdAt          DateTime      @default(now())
+  deletedAt          DateTime?
 
+  @@unique([studentId, period])
   @@index([schoolId, status])
   @@index([studentId])
   @@map("invoices")
+}
+
+/// A cash-in, possibly spread over several invoices (oldest first). Its hash certifies the receipt.
+model Payment {
+  id           String        @id @default(uuid()) @db.Uuid
+  schoolId     String        @db.Uuid
+  studentId    String        @db.Uuid
+  student      User          @relation("PaymentStudent", fields: [studentId], references: [id], onDelete: Restrict)
+  amountCents  Int
+  method       PaymentMethod
+  description  String
+  paidAt       DateTime      @default(now())
+  recordedById String        @db.Uuid
+  recordedBy   User          @relation("PaymentRecorder", fields: [recordedById], references: [id], onDelete: Restrict)
+  /// SHA-256 over the certified facts; unique so it can be verified publicly.
+  receiptHash  String        @unique @db.Char(64)
+  /// [{ invoiceId, amountCents }]
+  allocations  Json
+  createdAt    DateTime      @default(now())
+
+  @@index([schoolId, paidAt])
+  @@index([studentId])
+  @@map("payments")
 }
 
 model AttendanceRecord {
@@ -281,6 +320,8 @@ model User {
   deletedAt        DateTime?
   sessions         Session[]
   invoices         Invoice[]           @relation("InvoiceStudent")
+  payments         Payment[]           @relation("PaymentStudent")
+  recordedPayments Payment[]           @relation("PaymentRecorder")
   attendances      AttendanceRecord[]  @relation("AttendanceStudent")
   homeworks        Homework[]          @relation("HomeworkAuthor")
   profile          StudentProfile?     @relation("ProfileUser")

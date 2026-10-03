@@ -7,3 +7,7 @@ next-env.d.ts
 *.tsbuildinfo
 .firebase/
 .env.production
+.superadmin-credentials.txt
+
+.vercel
+.env*
