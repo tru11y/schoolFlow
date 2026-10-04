@@ -11,9 +11,9 @@ const SOURCE_LABEL = {
   local: "Calcul local (0 token)",
 } as const;
 
-export function SummaryCard({ scopes }: { scopes: { value: string; label: string }[] }) {
+export function SummaryCard({ scopes, initial = null, title = "Résumé stratégique" }: { scopes: { value: string; label: string }[]; initial?: ReportResult | null; title?: string }) {
   const [scope, setScope] = useState(scopes[0]?.value ?? "school");
-  const [result, setResult] = useState<ReportResult | null>(null);
+  const [result, setResult] = useState<ReportResult | null>(initial);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -21,7 +21,7 @@ export function SummaryCard({ scopes }: { scopes: { value: string; label: string
     <section className="rounded-3xl bg-surface p-6 shadow-soft">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Résumé stratégique</h2>
+          <h2 className="text-lg font-semibold">{title}</h2>
           <p className="text-sm text-ink/70">Un seul appel au modèle par jour et par périmètre ; ensuite le résultat est réutilisé.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

@@ -11,6 +11,7 @@ import { buildInsights } from "@/core/domain/copilot/benchmark";
 import { topRoiActions } from "@/core/domain/copilot/roi";
 import { loadGrowth } from "@/infrastructure/copilot/growth-service";
 import { RoiPanel, TodayPanel } from "@/presentation/components/copilot-cards";
+import { SummaryCard } from "@/app/(app)/ai-assistant/growth/summary-card";
 import { Card, PageTitle, StatCard } from "@/presentation/components/ui";
 
 const todayUtc = () => new Date(localParts(new Date()).date);
@@ -22,10 +23,14 @@ export default async function DashboardPage() {
   const currency = await getSchoolCurrency(principal.schoolId);
   const copilot =
     can(principal.role, "copilot:use") && principal.schoolId
-      ? await Promise.all([loadSnapshot(principal), loadGrowth(principal)]).then(([snapshot, growth]) => ({
+      ? await Promise.all([loadSnapshot(principal), loadGrowth(principal)]).then(async ([snapshot, growth]) => ({
           cards: buildActionCards(snapshot),
           roi: topRoiActions(snapshot, buildInsights(growth), 3),
           currency: snapshot.currency,
+          // Today's cached model analysis, if any: showing it costs nothing.
+          summary: await db.aiReport
+            .findFirst({ where: { scope: "school", day: todayUtc() }, select: { content: true, model: true } })
+            .then((r) => (r ? { text: r.content, source: "cache" as const, model: r.model } : null)),
         }))
       : null;
 
@@ -57,6 +62,15 @@ export default async function DashboardPage() {
         ) : null}
       </div>
       {copilot ? <RoiPanel actions={copilot.roi} currency={copilot.currency} /> : null}
+      {copilot ? (
+        <div className="mt-6">
+          <SummaryCard
+            title="✨ Analyse enrichie du jour"
+            scopes={[{ value: "school", label: "Toute l'école" }]}
+            initial={copilot.summary}
+          />
+        </div>
+      ) : null}
       {copilot ? <TodayPanel cards={copilot.cards} /> : null}
       <Card className="mt-6">
         <h2 className="text-lg font-semibold">Bienvenue sur SchoolFlow</h2>

@@ -1,10 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { buildLlmContext, COPILOT_SYSTEM_PROMPT, restoreNames } from "@/core/domain/copilot/llm-context";
 import type { CopilotSnapshot } from "@/core/domain/copilot/types";
+import { chatApiKey } from "./llm-env";
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5";
 
-export const llmEnabled = (): boolean => Boolean(process.env.ANTHROPIC_API_KEY);
+export const llmEnabled = (): boolean => Boolean(chatApiKey());
 
 let client: Anthropic | undefined;
 
@@ -17,7 +18,7 @@ export async function askClaude(question: string, snapshot: CopilotSnapshot): Pr
   if (!llmEnabled()) return { text: null, failed: false };
   const { text: context, names } = buildLlmContext(snapshot);
   try {
-    client ??= new Anthropic({ timeout: 30_000, maxRetries: 1 });
+    client ??= new Anthropic({ apiKey: chatApiKey(), timeout: 30_000, maxRetries: 1 });
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 800,
@@ -39,5 +40,20 @@ export async function askClaude(question: string, snapshot: CopilotSnapshot): Pr
       err instanceof Anthropic.APIError ? `${err.status} ${err.message}` : err instanceof Error ? err.message : "unknown",
     );
     return { text: null, failed: true };
+  }
+}
+
+/** Minimal call used by the health check: status only, no school data. */
+export async function pingChat(): Promise<{ configured: boolean; model: string; ok?: boolean; error?: string }> {
+  if (!llmEnabled()) return { configured: false, model: MODEL };
+  try {
+    client ??= new Anthropic({ apiKey: chatApiKey(), timeout: 30_000, maxRetries: 1 });
+    const res = await client.messages.create({ model: MODEL, max_tokens: 5, messages: [{ role: "user", content: "ping" }] });
+    return { configured: true, model: MODEL, ok: res.content.length > 0 };
+  } catch (err) {
+    return {
+      configured: true, model: MODEL, ok: false,
+      error: err instanceof Anthropic.APIError ? `${err.status} ${err.message}`.slice(0, 200) : "unknown",
+    };
   }
 }

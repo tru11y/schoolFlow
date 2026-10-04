@@ -8,7 +8,7 @@ import { buildInsights } from "@/core/domain/copilot/benchmark";
 import { REPORT_SYSTEM_PROMPT, buildReportPrompt, buildSummaryInput, localSummary } from "@/core/domain/copilot/report";
 import { loadSnapshot } from "@/infrastructure/copilot/copilot-service";
 import { loadGrowth } from "@/infrastructure/copilot/growth-service";
-import { readLlm } from "@/infrastructure/copilot/llm";
+import { llmFromEnv } from "@/infrastructure/copilot/llm-env";
 import { env } from "@/infrastructure/env/env";
 import { secureAction } from "@/presentation/secure-action";
 
@@ -46,11 +46,7 @@ export const generateAiSummary = secureAction(
       scope: input.scope,
       day: localParts(new Date()).date,
       store,
-      llm: readLlm({
-        AI_PROVIDER: e.AI_PROVIDER ?? (e.ANTHROPIC_API_KEY ? "anthropic" : undefined),
-        AI_API_KEY: e.AI_API_KEY ?? e.ANTHROPIC_API_KEY,
-        AI_MODEL: e.AI_MODEL,
-      }),
+      llm: llmFromEnv({ AI_PROVIDER: e.AI_PROVIDER, AI_API_KEY: e.AI_API_KEY, AI_MODEL: e.AI_MODEL, ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY }),
       system: REPORT_SYSTEM_PROMPT,
       prompt: buildReportPrompt(summary),
       local: localSummary(summary),
