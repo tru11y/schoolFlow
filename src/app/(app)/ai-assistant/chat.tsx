@@ -64,7 +64,10 @@ export function Chat({ initialQuestion }: { initialQuestion?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once for the ?q= deep link
   }, [initialQuestion]);
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), [turns, pending]);
+  useEffect(() => {
+    // Block body on purpose: an effect must return nothing or a cleanup function, never scrollIntoView's result.
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [turns, pending]);
 
   return (
     <div className="grid gap-4">

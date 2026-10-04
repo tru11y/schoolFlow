@@ -1,6 +1,13 @@
 "use client";
 
-export default function AppError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
+import { useEffect } from "react";
+
+export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => {
+    // Makes the cause visible in the browser console / monitoring instead of a silent fallback screen.
+    console.error("page error", error.message, error.digest ?? "");
+  }, [error]);
+
   return (
     <main className="grid min-h-dvh place-items-center p-6">
       <div role="alert" className="grid max-w-sm gap-4 rounded-3xl bg-surface p-8 text-center shadow-soft">
