@@ -43,4 +43,19 @@ export class PrismaSessionRepository implements SessionRepository {
   async revokeByTokenHash(tokenHash: string, at: Date): Promise<void> {
     await prisma.session.updateMany({ where: { tokenHash, revokedAt: null }, data: { revokedAt: at } });
   }
+
+  async revokeOldestActive(userId: string, keep: number, now: Date): Promise<number> {
+    const active = await prisma.session.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: now } },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    const stale = active.slice(keep).map((s) => s.id);
+    if (stale.length > 0) await prisma.session.updateMany({ where: { id: { in: stale } }, data: { revokedAt: now } });
+    return Math.min(active.length, keep);
+  }
+
+  async revokeAllForUser(userId: string, at: Date): Promise<void> {
+    await prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: at } });
+  }
 }

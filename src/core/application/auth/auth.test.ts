@@ -38,6 +38,14 @@ function fakeSessionRepo(): SessionRepository & { rows: Map<string, SessionView>
       const r = rows.get(h);
       if (r) r.revokedAt = at;
     },
+    async revokeOldestActive(userId: string, keep: number, now: Date) {
+      const active = [...rows.values()].filter((r) => r.userId === userId && !r.revokedAt && r.expiresAt > now).reverse();
+      active.slice(keep).forEach((r) => { r.revokedAt = now; });
+      return Math.min(active.length, keep);
+    },
+    async revokeAllForUser(userId: string, at: Date) {
+      rows.forEach((r) => { if (r.userId === userId && !r.revokedAt) r.revokedAt = at; });
+    },
   };
   return repo;
 }
@@ -135,5 +143,35 @@ describe("assertPermission", () => {
   it("allows and denies by role", () => {
     expect(() => assertPermission(p, "homework:read")).not.toThrow();
     expect(() => assertPermission(p, "finance:write")).toThrow(ForbiddenError);
+  });
+});
+
+describe("multi-device sessions", () => {
+  it("keeps earlier sessions valid on a new login and audits the multi-device login", async () => {
+    const { login, sessions, audit } = setup();
+    const phone = await login.execute({ email: "t@x.fr", password: "good", ...ctx, userAgent: "phone" });
+    const laptop = await login.execute({ email: "t@x.fr", password: "good", ...ctx, userAgent: "laptop" });
+    expect(await sessions.validate(phone.token)).not.toBeNull();
+    expect(await sessions.validate(laptop.token)).not.toBeNull();
+    expect(audit.at(-1)).toMatchObject({ action: "USER_LOGIN_MULTI_DEVICE", metadata: { device: "laptop", otherActiveSessions: 1 } });
+  });
+
+  it("revokes only the oldest session beyond the cap of 5", async () => {
+    const { sessions } = setup();
+    const tokens: string[] = [];
+    for (let i = 0; i < 6; i++) tokens.push((await sessions.create("u1", ctx)).token);
+    expect(await sessions.validate(tokens[0]!)).toBeNull();
+    for (const t of tokens.slice(1)) expect(await sessions.validate(t)).not.toBeNull();
+  });
+
+  it("logout revokes one device; revokeAll revokes every device", async () => {
+    const { sessions } = setup();
+    const a = (await sessions.create("u1", ctx)).token;
+    const b = (await sessions.create("u1", ctx)).token;
+    await sessions.revoke(a);
+    expect(await sessions.validate(a)).toBeNull();
+    expect(await sessions.validate(b)).not.toBeNull();
+    await sessions.revokeAll("u1");
+    expect(await sessions.validate(b)).toBeNull();
   });
 });

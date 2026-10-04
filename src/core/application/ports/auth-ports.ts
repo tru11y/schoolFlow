@@ -43,6 +43,9 @@ export interface SessionRepository {
   findByTokenHash(tokenHash: string): Promise<SessionView | null>;
   touch(sessionId: string, lastSeenAt: Date, expiresAt: Date): Promise<void>;
   revokeByTokenHash(tokenHash: string, at: Date): Promise<void>;
+  /** Keeps the `keep` most recent active sessions of the user, revokes the rest; returns how many remain active. */
+  revokeOldestActive(userId: string, keep: number, now: Date): Promise<number>;
+  revokeAllForUser(userId: string, at: Date): Promise<void>;
 }
 
 export interface TokenCodec {

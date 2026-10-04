@@ -62,6 +62,13 @@ export class LoginUseCase {
       ...base, schoolId: user.schoolId, actorId: user.id, actorRole: user.role,
       action: "auth.login", outcome: "SUCCESS", metadata: {},
     });
-    return session;
+    if (session.otherActiveSessions > 0) {
+      await this.audit.record({
+        ...base, schoolId: user.schoolId, actorId: user.id, actorRole: user.role,
+        action: "USER_LOGIN_MULTI_DEVICE", outcome: "SUCCESS",
+        metadata: { device: input.userAgent, otherActiveSessions: session.otherActiveSessions },
+      });
+    }
+    return { token: session.token, expiresAt: session.expiresAt };
   }
 }

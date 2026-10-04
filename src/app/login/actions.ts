@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { InvalidCredentialsError, RateLimitedError } from "@/core/domain/errors";
 import { container } from "@/presentation/auth/container";
+import { getPrincipal } from "@/presentation/auth/guards";
 import { SESSION_COOKIE, sessionCookieOptions } from "@/presentation/auth/cookie-config";
 
 const schema = z.object({
@@ -50,5 +51,20 @@ export async function logoutAction(): Promise<void> {
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) await container().sessions.revoke(token);
   jar.delete(SESSION_COOKIE);
+  redirect("/login");
+}
+
+export async function logoutAllAction(): Promise<void> {
+  const principal = await getPrincipal();
+  if (principal) {
+    const h = await headers();
+    await container().sessions.revokeAll(principal.userId);
+    await container().audit.record({
+      schoolId: principal.schoolId, actorId: principal.userId, actorRole: principal.role,
+      action: "USER_LOGOUT_ALL_DEVICES", resource: "session", resourceId: principal.sessionId, outcome: "SUCCESS",
+      ip: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip"), userAgent: h.get("user-agent"),
+    });
+  }
+  (await cookies()).delete(SESSION_COOKIE);
   redirect("/login");
 }
