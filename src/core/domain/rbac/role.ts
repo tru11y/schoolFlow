@@ -13,6 +13,8 @@ export const PERMISSIONS = [
   "homework:write",
   "chat:use",
   "audit:read",
+  /** AI copilot: pages, dashboard cards, floating button and server actions. SUPER_ADMIN only. */
+  "copilot:use",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 

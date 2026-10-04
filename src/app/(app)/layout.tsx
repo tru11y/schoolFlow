@@ -7,7 +7,7 @@ import Link from "next/link";
 
 const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/dashboard", label: "Tableau de bord", icon: "🏠" },
-  { href: "/ai-assistant", label: "Copilote IA", icon: "✨", permission: "user:manage" },
+  { href: "/ai-assistant", label: "Copilote IA", icon: "✨", permission: "copilot:use" },
   { href: "/students", label: "Élèves", icon: "🎓", permission: "user:manage" },
   { href: "/compta", label: "Comptabilité", icon: "💳", permission: "finance:read" },
   { href: "/cahier-de-texte", label: "Cahier de texte", icon: "📓", permission: "homework:read" },
@@ -37,7 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           school={user?.school?.name ?? "Plateforme"}
         />
         <main className="px-6 pb-12 md:px-10">{children}</main>
-        {can(principal.role, "user:manage") ? (
+        {can(principal.role, "copilot:use") ? (
           <Link
             href="/ai-assistant"
             aria-label="Ouvrir le copilote IA"

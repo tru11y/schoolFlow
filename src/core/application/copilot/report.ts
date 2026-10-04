@@ -29,6 +29,8 @@ export async function getReport(args: {
   system: string;
   prompt: string;
   local: string;
+  /** Called with the model error before falling back to the local summary. */
+  onError?: (err: unknown) => void;
 }): Promise<ReportResult> {
   const { scope, day, store, llm } = args;
   if (!llm) return { text: args.local, source: "local", model: null };
@@ -41,7 +43,8 @@ export async function getReport(args: {
     if (!text) throw new Error("empty completion");
     await store.save(scope, day, text, llm.model);
     return { text, source: "model", model: llm.model };
-  } catch {
+  } catch (err) {
+    args.onError?.(err);
     return { text: args.local, source: "local", model: null, error: true };
   }
 }

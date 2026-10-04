@@ -16,7 +16,7 @@ export const generateAiSummary = secureAction(
   {
     name: "COPILOT_AI_SUMMARY",
     resource: "copilot",
-    permission: "user:manage",
+    permission: "copilot:use",
     input: z.object({ scope: z.string().regex(/^(school|class:.{1,20})$/) }),
     // Scope, source and model only: never the report text.
     auditMetadata: (i, data: ReportResult | undefined) => ({ scope: i.scope, source: data?.source, model: data?.model }),
@@ -54,6 +54,7 @@ export const generateAiSummary = secureAction(
       system: REPORT_SYSTEM_PROMPT,
       prompt: buildReportPrompt(summary),
       local: localSummary(summary),
+      onError: (err) => console.error("copilot summary failed", err instanceof Error ? err.message : "unknown"),
     });
   },
 );

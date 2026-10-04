@@ -21,7 +21,7 @@ export default async function DashboardPage() {
   const showFinance = can(principal.role, "finance:read");
   const currency = await getSchoolCurrency(principal.schoolId);
   const copilot =
-    can(principal.role, "user:manage") && principal.schoolId
+    can(principal.role, "copilot:use") && principal.schoolId
       ? await Promise.all([loadSnapshot(principal), loadGrowth(principal)]).then(([snapshot, growth]) => ({
           cards: buildActionCards(snapshot),
           roi: topRoiActions(snapshot, buildInsights(growth), 3),

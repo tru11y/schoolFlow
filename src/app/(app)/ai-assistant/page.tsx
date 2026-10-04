@@ -6,7 +6,7 @@ import { Chat } from "./chat";
 export const metadata = { title: "Copilote IA · SchoolFlow" };
 
 export default async function AiAssistantPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  await requirePagePermission("user:manage");
+  await requirePagePermission("copilot:use");
   const { q } = await searchParams;
   return (
     <>

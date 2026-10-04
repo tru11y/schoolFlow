@@ -29,7 +29,7 @@ const SIZE = {
 } as const;
 
 export default async function GrowthPage() {
-  const principal = await requirePagePermission("user:manage");
+  const principal = await requirePagePermission("copilot:use");
   const [snapshot, growth] = await Promise.all([loadSnapshot(principal), loadGrowth(principal)]);
   const now = new Date();
   const money = (c: number) => formatMoney(c, growth.currency);
