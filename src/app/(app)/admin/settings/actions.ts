@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
 import { CURRENCIES, CURRENCY_CODES } from "@/core/domain/finance/money";
+import { welcomeMessageSchema } from "@/core/domain/school/branding";
 import { logoDataUrlSchema } from "@/core/domain/school/logo";
 import { prisma } from "@/infrastructure/db/prisma";
 import { secureAction } from "@/presentation/secure-action";
@@ -42,6 +43,7 @@ export const updateSchoolProfile = secureAction(
     input: z.object({
       name: z.string().trim().min(2).max(80),
       academicYear: z.string().trim().regex(/^\d{4} - \d{4}$/),
+      welcomeMessage: welcomeMessageSchema.optional(),
       logoDataUrl: logoDataUrlSchema,
     }),
     resourceId: (_i, data: { schoolId: string }) => data.schoolId,
@@ -53,7 +55,7 @@ export const updateSchoolProfile = secureAction(
 
     await prisma.school.update({
       where: { id: schoolId },
-      data: { name: input.name, academicYear: input.academicYear, ...(input.logoDataUrl === undefined ? {} : { logoDataUrl: input.logoDataUrl }) },
+      data: { name: input.name, academicYear: input.academicYear, ...(input.welcomeMessage === undefined ? {} : { welcomeMessage: input.welcomeMessage }), ...(input.logoDataUrl === undefined ? {} : { logoDataUrl: input.logoDataUrl }) },
     });
     revalidatePath("/", "layout");
     return { schoolId };

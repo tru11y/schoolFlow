@@ -23,17 +23,19 @@ enum AuditOutcome {
 }
 
 model School {
-  id        String    @id @default(uuid()) @db.Uuid
-  name      String
+  id             String    @id @default(uuid()) @db.Uuid
+  name           String
   /// FCFA | EUR | USD | CAD - amounts are stored in minor units of this currency (FCFA: no decimals).
-  currency  String    @default("EUR")
+  currency       String    @default("EUR")
   /// PNG or JPEG (<=150 KB) stored as a data URL; served by /school-logo.
-  logoDataUrl String?
+  logoDataUrl    String?
   /// Shown on the login page and in headers, e.g. "2026 - 2027".
-  academicYear String @default("2026 - 2027")
-  createdAt DateTime  @default(now())
-  deletedAt DateTime?
-  users     User[]
+  academicYear   String    @default("2026 - 2027")
+  /// Short announcement shown on the login page (default message when empty).
+  welcomeMessage String?
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+  users          User[]
 
   @@map("schools")
 }
