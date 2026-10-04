@@ -4,7 +4,7 @@ import {
 } from "./rules";
 import type { ActionLink, CopilotSnapshot } from "./types";
 
-export type Intent = "arrears" | "upcoming" | "absences" | "teachers" | "growth" | "today" | "help";
+export type Intent = "ai" | "arrears" | "upcoming" | "absences" | "teachers" | "growth" | "today" | "help";
 
 export interface ReplyItem {
   title: string;
