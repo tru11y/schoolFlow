@@ -5,6 +5,9 @@ import { formatMoney } from "@/core/domain/finance/money";
 import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requireAuth } from "@/presentation/auth/guards";
+import { buildActionCards } from "@/core/domain/copilot/rules";
+import { loadSnapshot } from "@/infrastructure/copilot/copilot-service";
+import { TodayPanel } from "@/presentation/components/copilot-cards";
 import { Card, PageTitle, StatCard } from "@/presentation/components/ui";
 
 const todayUtc = () => new Date(localParts(new Date()).date);
@@ -14,6 +17,7 @@ export default async function DashboardPage() {
   const db = tenantPrisma(principal);
   const showFinance = can(principal.role, "finance:read");
   const currency = await getSchoolCurrency(principal.schoolId);
+  const cards = can(principal.role, "user:manage") && principal.schoolId ? buildActionCards(await loadSnapshot(principal)) : null;
 
   const [students, present, recorded, homeworks, pending] = await Promise.all([
     db.user.count({ where: { role: "STUDENT", deletedAt: null } }),
@@ -42,6 +46,7 @@ export default async function DashboardPage() {
           <StatCard index={3} icon="💳" tone="mint" label="Impayés" value={formatMoney(pending.reduce((sum, i) => sum + remaining(i), 0), currency)} />
         ) : null}
       </div>
+      {cards ? <TodayPanel cards={cards} /> : null}
       <Card className="mt-6">
         <h2 className="text-lg font-semibold">Bienvenue sur SchoolFlow</h2>
         <p className="mt-2 text-ink/70">
