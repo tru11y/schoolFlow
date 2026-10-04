@@ -29,6 +29,8 @@ model School {
   currency  String    @default("EUR")
   /// PNG or JPEG (<=150 KB) stored as a data URL; served by /school-logo.
   logoDataUrl String?
+  /// Shown on the login page and in headers, e.g. "2026 - 2027".
+  academicYear String @default("2026 - 2027")
   createdAt DateTime  @default(now())
   deletedAt DateTime?
   users     User[]

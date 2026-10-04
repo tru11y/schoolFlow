@@ -9,7 +9,7 @@ export default async function SettingsPage() {
   const principal = await requirePagePermission("school:manage");
   const currency = await getSchoolCurrency(principal.schoolId);
   const school = principal.schoolId
-    ? await prisma.school.findUnique({ where: { id: principal.schoolId }, select: { name: true, logoDataUrl: true } })
+    ? await prisma.school.findUnique({ where: { id: principal.schoolId }, select: { name: true, academicYear: true, logoDataUrl: true } })
     : null;
 
   return (
@@ -18,7 +18,7 @@ export default async function SettingsPage() {
       <div className="grid gap-6">
         {school ? (
           <Card className="max-w-2xl">
-            <ProfileForm name={school.name} hasLogo={school.logoDataUrl !== null} />
+            <ProfileForm name={school.name} academicYear={school.academicYear} hasLogo={school.logoDataUrl !== null} />
           </Card>
         ) : null}
         <Card className="max-w-2xl">

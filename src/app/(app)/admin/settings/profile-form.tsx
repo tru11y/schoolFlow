@@ -12,7 +12,7 @@ const readAsDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-export function ProfileForm({ name, hasLogo }: { name: string; hasLogo: boolean }) {
+export function ProfileForm({ name, academicYear, hasLogo }: { name: string; academicYear: string; hasLogo: boolean }) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [logo, setLogo] = useState<string | null | undefined>(undefined);
@@ -31,7 +31,7 @@ export function ProfileForm({ name, hasLogo }: { name: string; hasLogo: boolean 
     <form
       action={(fd) =>
         start(async () => {
-          const res = await updateSchoolProfile({ name: fd.get("name"), logoDataUrl: logo });
+          const res = await updateSchoolProfile({ name: fd.get("name"), academicYear: fd.get("academicYear"), logoDataUrl: logo });
           setMessage(res.ok ? "Établissement enregistré" : res.error.message);
           if (res.ok) setLogo(undefined);
         })
@@ -46,6 +46,16 @@ export function ProfileForm({ name, hasLogo }: { name: string; hasLogo: boolean 
           minLength={2}
           maxLength={80}
           className="min-w-64 rounded-2xl bg-canvas px-4 py-2.5 outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent"
+        />
+      </label>
+      <label className="grid gap-1 text-sm">Année scolaire
+        <input
+          name="academicYear"
+          defaultValue={academicYear}
+          required
+          pattern="\d{4} - \d{4}"
+          placeholder="2026 - 2027"
+          className="w-40 rounded-2xl bg-canvas px-4 py-2.5 outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent"
         />
       </label>
       <div className="flex flex-wrap items-center gap-4">

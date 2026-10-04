@@ -1,0 +1,1 @@
+ALTER TABLE "schools" ADD COLUMN "academicYear" TEXT NOT NULL DEFAULT '2026 - 2027';

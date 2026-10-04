@@ -41,6 +41,7 @@ export const updateSchoolProfile = secureAction(
     permission: "school:manage",
     input: z.object({
       name: z.string().trim().min(2).max(80),
+      academicYear: z.string().trim().regex(/^\d{4} - \d{4}$/),
       logoDataUrl: logoDataUrlSchema,
     }),
     resourceId: (_i, data: { schoolId: string }) => data.schoolId,
@@ -52,7 +53,7 @@ export const updateSchoolProfile = secureAction(
 
     await prisma.school.update({
       where: { id: schoolId },
-      data: { name: input.name, ...(input.logoDataUrl === undefined ? {} : { logoDataUrl: input.logoDataUrl }) },
+      data: { name: input.name, academicYear: input.academicYear, ...(input.logoDataUrl === undefined ? {} : { logoDataUrl: input.logoDataUrl }) },
     });
     revalidatePath("/", "layout");
     return { schoolId };

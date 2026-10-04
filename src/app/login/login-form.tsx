@@ -14,7 +14,6 @@ export function LoginForm({ next }: { next: string }) {
 
   return (
     <form action={action} className="grid w-full max-w-sm gap-4 rounded-3xl bg-surface p-8 shadow-soft">
-      <h1 className="text-2xl font-semibold">Connexion</h1>
       <input type="hidden" name="next" value={next} />
       <label className="grid gap-1 text-sm">
         Adresse e-mail
