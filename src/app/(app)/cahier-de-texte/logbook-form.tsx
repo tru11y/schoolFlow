@@ -32,7 +32,7 @@ interface Props {
 }
 
 const field =
-  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
 export function LogbookForm({ levels, subjectsByLevel, slots, chapters, today, initial, autoOpen }: Props) {
   const router = useRouter();
@@ -155,7 +155,7 @@ export function LogbookForm({ levels, subjectsByLevel, slots, chapters, today, i
             Marquer le chapitre comme terminé
           </label>
 
-          {error ? <p role="alert" className="text-sm text-red-300 sm:col-span-2">{error}</p> : null}
+          {error ? <p role="alert" className="text-sm text-danger sm:col-span-2">{error}</p> : null}
           <div className="flex justify-end gap-3 sm:col-span-2">
             <button type="button" onClick={() => dialog.current?.close()} className="rounded-2xl px-5 py-2.5 text-ink/80 hover:bg-raised">Annuler</button>
             <button disabled={pending} className="rounded-2xl bg-accent px-5 py-2.5 font-medium text-canvas active:scale-95 disabled:opacity-60">

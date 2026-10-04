@@ -10,7 +10,7 @@ export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(loginAction, initial);
   const [showPassword, setShowPassword] = useState(false);
   const field =
-    "w-full rounded-2xl bg-canvas px-4 py-3 outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+    "w-full rounded-2xl bg-canvas px-4 py-3 outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
   return (
     <form action={action} className="grid w-full max-w-sm gap-4 rounded-3xl bg-surface p-8 shadow-soft">
@@ -41,7 +41,7 @@ export function LoginForm({ next }: { next: string }) {
           </button>
         </span>
       </label>
-      <p role="alert" aria-live="polite" className="min-h-5 text-sm text-red-300">
+      <p role="alert" aria-live="polite" className="min-h-5 text-sm text-danger">
         {state.error}
       </p>
       <button

@@ -22,8 +22,8 @@ interface Props {
 
 const OPTIONS: { value: Status; label: string; icon: string; on: string }[] = [
   { value: "PRESENT", label: "Présent", icon: "✓", on: "bg-mint text-canvas" },
-  { value: "ABSENT", label: "Absent", icon: "✕", on: "bg-red-300 text-canvas" },
-  { value: "LATE", label: "Retard", icon: "⏱", on: "bg-amber-300 text-canvas" },
+  { value: "ABSENT", label: "Absent", icon: "✕", on: "bg-danger text-canvas" },
+  { value: "LATE", label: "Retard", icon: "⏱", on: "bg-warning text-canvas" },
 ];
 
 export function TakeForm({ level, timing, students, today }: Props) {
@@ -110,7 +110,7 @@ export function TakeForm({ level, timing, students, today }: Props) {
         {students.length === 0 ? <li className="text-ink/70">Aucun élève actif dans cette classe.</li> : null}
       </ul>
 
-      {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
 
       <motion.button
         type="button"

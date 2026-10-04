@@ -28,7 +28,7 @@ export function CurrencyForm({ current }: { current: CurrencyCode }) {
         <select
           name="currency"
           defaultValue={current}
-          className="min-w-64 rounded-2xl bg-canvas px-4 py-2.5 outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent"
+          className="min-w-64 rounded-2xl bg-canvas px-4 py-2.5 outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent"
         >
           {Object.entries(CURRENCIES).map(([code, c]) => <option key={code} value={code}>{c.label}</option>)}
         </select>

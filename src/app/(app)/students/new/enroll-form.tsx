@@ -6,14 +6,14 @@ import { createStudent, type CreateStudentResult } from "../actions";
 import { ParentsFields, readParents } from "../parents-fields";
 
 const field =
-  "w-full rounded-2xl bg-canvas px-4 py-3 outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+  "w-full rounded-2xl bg-canvas px-4 py-3 outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
 function Field({ label, errors, children }: { label: string; errors?: string[]; children: React.ReactNode }) {
   return (
     <label className="grid gap-1 text-sm">
       {label}
       {children}
-      {errors?.length ? <span role="alert" className="text-xs text-red-300">Champ invalide</span> : null}
+      {errors?.length ? <span role="alert" className="text-xs text-danger">Champ invalide</span> : null}
     </label>
   );
 }
@@ -97,7 +97,7 @@ export function EnrollForm({ currencySymbol, levels }: { currencySymbol: string;
         <Field label="Première échéance" errors={fieldErrors.firstDue}><input name="firstDue" type="date" required className={field} /></Field>
       </fieldset>
 
-      {error ? <p role="alert" className="text-sm text-red-300 sm:col-span-2">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-danger sm:col-span-2">{error}</p> : null}
       <div className="flex justify-end gap-3 sm:col-span-2">
         <Link href="/students" className="rounded-2xl px-5 py-3 text-ink/80 hover:bg-raised">Annuler</Link>
         <button disabled={pending} className="rounded-2xl bg-accent px-5 py-3 font-medium text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95 disabled:opacity-60">

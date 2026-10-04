@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { createChapter, setChapterDone } from "./actions";
 
 const field =
-  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
 export function ChapterCheck({ id, title, position, done, canWrite }: { id: string; title: string; position: number; done: boolean; canWrite: boolean }) {
   const [pending, start] = useTransition();
@@ -28,7 +28,7 @@ export function ChapterCheck({ id, title, position, done, canWrite }: { id: stri
         <span className="mr-2 text-ink/60">Ch. {position}</span>
         {title}
       </span>
-      {error ? <span role="alert" className="ml-auto text-xs text-red-300">{error}</span> : null}
+      {error ? <span role="alert" className="ml-auto text-xs text-danger">{error}</span> : null}
     </label>
   );
 }
@@ -60,7 +60,7 @@ export function AddChapter({ subjects, levels }: { subjects: string[]; levels: s
       <button disabled={pending} className="min-h-11 rounded-2xl bg-accent px-5 font-medium text-canvas active:scale-95 disabled:opacity-60">
         {pending ? "…" : "Ajouter"}
       </button>
-      {error ? <p role="alert" className="text-sm text-red-300 sm:col-span-4">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-danger sm:col-span-4">{error}</p> : null}
     </form>
   );
 }

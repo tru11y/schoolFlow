@@ -10,15 +10,21 @@ export interface NavItem {
   icon: string;
 }
 
-export function Sidebar({ items }: { items: NavItem[] }) {
+export function Sidebar({ items, schoolName, hasLogo }: { items: NavItem[]; schoolName: string; hasLogo: boolean }) {
   const pathname = usePathname();
   return (
     <nav
       aria-label="Navigation principale"
       className="flex gap-2 overflow-x-auto bg-surface p-3 md:w-64 md:shrink-0 md:flex-col md:overflow-visible md:p-5"
     >
-      <p className="hidden px-3 pb-4 pt-2 text-xl font-semibold md:block">
-        <span aria-hidden>🎒 </span>SchoolFlow
+      <p className="hidden items-center gap-3 px-3 pb-4 pt-2 text-lg font-semibold leading-tight md:flex">
+        {hasLogo ? (
+          // eslint-disable-next-line @next/next/no-img-element -- auth-gated route, not optimizable
+          <img src="/school-logo" alt="" className="size-9 shrink-0 rounded-xl object-contain" />
+        ) : (
+          <span aria-hidden>🎒</span>
+        )}
+        <span className="min-w-0 break-words">{schoolName}</span>
       </p>
       {items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
 import { formatMoney } from "@/core/domain/finance/money";
+import { decodeLogoDataUrl } from "@/core/domain/school/logo";
 import { prisma } from "@/infrastructure/db/prisma";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { env } from "@/infrastructure/env/env";
@@ -29,9 +30,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   });
   if (!payment) return new Response("Not found", { status: 404 });
 
-  const school = await prisma.school.findUnique({ where: { id: payment.schoolId }, select: { name: true, currency: true } });
+  const school = await prisma.school.findUnique({ where: { id: payment.schoolId }, select: { name: true, currency: true, logoDataUrl: true } });
   const pdf = await buildReceiptPdf({
     schoolName: school?.name ?? "",
+    logo: school?.logoDataUrl ? decodeLogoDataUrl(school.logoDataUrl) : null,
     studentName: `${payment.student.firstName} ${payment.student.lastName}`,
     label: payment.description,
     amount: formatMoney(payment.amountCents, school?.currency ?? "EUR", "code"),

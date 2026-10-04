@@ -12,7 +12,7 @@ const METHODS = [
 ] as const;
 
 const field =
-  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
 interface Props {
   students: PayerSummary[];
@@ -83,7 +83,7 @@ export function PaymentForm({ students, currency, defaultDescription, preselect,
         <dl className="grid grid-cols-3 gap-2 text-sm" aria-live="polite">
           <div className="rounded-2xl bg-sky/10 p-3"><dt className="text-xs text-ink/70">Mensualité</dt><dd className="font-semibold">{student.fee == null ? "—" : fmt(student.fee, currency)}</dd></div>
           <div className="rounded-2xl bg-mint/10 p-3"><dt className="text-xs text-ink/70">Solde dû</dt><dd className="font-semibold">{fmt(student.balance, currency)}</dd></div>
-          <div className={`rounded-2xl p-3 ${student.arrears > 0 ? "bg-red-400/10" : "bg-canvas"}`}><dt className="text-xs text-ink/70">Arriérés</dt><dd className="font-semibold">{fmt(student.arrears, currency)}</dd></div>
+          <div className={`rounded-2xl p-3 ${student.arrears > 0 ? "bg-danger/10" : "bg-canvas"}`}><dt className="text-xs text-ink/70">Arriérés</dt><dd className="font-semibold">{fmt(student.arrears, currency)}</dd></div>
         </dl>
       ) : null}
 
@@ -102,7 +102,7 @@ export function PaymentForm({ students, currency, defaultDescription, preselect,
       </label>
 
       {message ? (
-        <p role={message.tone === "error" ? "alert" : "status"} className={`text-sm ${message.tone === "error" ? "text-red-300" : "text-mint"}`}>
+        <p role={message.tone === "error" ? "alert" : "status"} className={`text-sm ${message.tone === "error" ? "text-danger" : "text-mint"}`}>
           {message.text}{" "}
           {message.href ? <a href={message.href} className="underline">Télécharger le reçu</a> : null}
         </p>

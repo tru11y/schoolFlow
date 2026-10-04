@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { createLevel, deleteLevel, updateLevel, type LevelResult } from "./actions";
 
 const field =
-  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
 function message(res: { ok: true; data: LevelResult } | { ok: false; error: { message: string } }): string | null {
   if (!res.ok) return res.error.message;
@@ -35,7 +35,7 @@ export function AddLevel({ currency }: { currency: string }) {
       <button disabled={pending} className="min-h-11 rounded-2xl bg-accent px-5 font-medium text-canvas active:scale-95 disabled:opacity-60">
         {pending ? "…" : "Ajouter"}
       </button>
-      {error ? <p role="alert" className="text-sm text-red-300 sm:col-span-3">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-danger sm:col-span-3">{error}</p> : null}
     </form>
   );
 }
@@ -75,19 +75,19 @@ export function LevelRow({ id, name, feeMajor, currency, used }: RowProps) {
                     setConfirming(false);
                   })
                 }
-                className="min-h-9 rounded-xl bg-red-400/20 px-3 text-sm text-red-200 hover:bg-red-400/30"
+                className="min-h-9 rounded-xl bg-danger/20 px-3 text-sm text-danger hover:bg-danger/30"
               >
                 Confirmer la suppression
               </button>
               <button onClick={() => setConfirming(false)} className="min-h-9 rounded-xl px-3 text-sm hover:bg-raised">Annuler</button>
             </>
           ) : (
-            <button onClick={() => setConfirming(true)} className="min-h-9 rounded-xl px-3 text-sm text-red-300 hover:bg-red-400/10">
+            <button onClick={() => setConfirming(true)} className="min-h-9 rounded-xl px-3 text-sm text-danger hover:bg-danger/10">
               Supprimer
             </button>
           )}
         </div>
-        {error ? <p role="alert" className="w-full text-sm text-red-300">{error}</p> : null}
+        {error ? <p role="alert" className="w-full text-sm text-danger">{error}</p> : null}
       </li>
     );
   }
@@ -115,7 +115,7 @@ export function LevelRow({ id, name, feeMajor, currency, used }: RowProps) {
           <button disabled={pending} className="min-h-11 rounded-2xl bg-accent px-4 font-medium text-canvas disabled:opacity-60">Enregistrer</button>
           <button type="button" onClick={() => setEditing(false)} className="min-h-11 rounded-2xl px-4 text-ink/80 hover:bg-raised">Annuler</button>
         </div>
-        {error ? <p role="alert" className="text-sm text-red-300 sm:col-span-3">{error}</p> : null}
+        {error ? <p role="alert" className="text-sm text-danger sm:col-span-3">{error}</p> : null}
       </form>
     </li>
   );

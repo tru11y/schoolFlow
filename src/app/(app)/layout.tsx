@@ -21,13 +21,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const principal = await requireAuth();
   const user = await prisma.user.findUnique({
     where: { id: principal.userId },
-    select: { firstName: true, lastName: true, school: { select: { name: true } } },
+    select: { firstName: true, lastName: true, school: { select: { name: true, logoDataUrl: true } } },
   });
   const items = NAV.filter((n) => !n.permission || can(principal.role, n.permission));
 
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
-      <Sidebar items={items} />
+      <Sidebar items={items} schoolName={user?.school?.name ?? "SchoolFlow"} hasLogo={Boolean(user?.school?.logoDataUrl)} />
       <div className="min-w-0 flex-1">
         <Topbar
           name={user ? `${user.firstName} ${user.lastName}` : ""}

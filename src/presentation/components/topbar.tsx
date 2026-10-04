@@ -1,4 +1,5 @@
 import { logoutAction } from "@/app/login/actions";
+import { ThemeToggle } from "./theme-toggle";
 
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Super admin",
@@ -18,8 +19,9 @@ export function Topbar({ name, role, school }: { name: string; role: string; sch
           <p className="font-medium">{name}</p>
           <p className="text-ink/70">{ROLE_LABELS[role] ?? role}</p>
         </div>
+        <ThemeToggle />
         <form action={logoutAction}>
-          <button className="rounded-2xl bg-surface px-4 py-2 text-sm outline-none ring-1 ring-white/15 transition hover:bg-raised focus-visible:ring-2 focus-visible:ring-accent active:scale-95">
+          <button className="rounded-2xl bg-surface px-4 py-2 text-sm outline-none ring-1 ring-ink/15 transition hover:bg-raised focus-visible:ring-2 focus-visible:ring-accent active:scale-95">
             Déconnexion
           </button>
         </form>

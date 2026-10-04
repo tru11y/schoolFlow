@@ -12,7 +12,7 @@ export interface ParentValue {
 const EMPTY: ParentValue = { name: "", relation: "", phone: "", email: "" };
 
 const field =
-  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
 /** Builds the `parents` array from the `parentN_*` inputs; a removed second contact is simply absent. */
 export function readParents(fd: FormData): ParentValue[] {
@@ -74,7 +74,7 @@ export function ParentsFields({ initial, invalid }: { initial?: ParentValue[]; i
         </button>
       )}
       {invalid ? (
-        <p role="alert" className="text-sm text-red-300">
+        <p role="alert" className="text-sm text-danger">
           Chaque contact doit avoir un nom, une relation et un téléphone ou un e-mail valide.
         </p>
       ) : null}

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
 import { CURRENCIES, CURRENCY_CODES } from "@/core/domain/finance/money";
+import { logoDataUrlSchema } from "@/core/domain/school/logo";
 import { prisma } from "@/infrastructure/db/prisma";
 import { secureAction } from "@/presentation/secure-action";
 
@@ -28,6 +29,31 @@ export const updateSchoolSettings = secureAction(
     }
 
     await prisma.school.update({ where: { id: schoolId }, data: { currency: input.currency } });
+    revalidatePath("/", "layout");
+    return { schoolId };
+  },
+);
+
+export const updateSchoolProfile = secureAction(
+  {
+    name: "SCHOOL_PROFILE_UPDATED",
+    resource: "school",
+    permission: "school:manage",
+    input: z.object({
+      name: z.string().trim().min(2).max(80),
+      logoDataUrl: logoDataUrlSchema,
+    }),
+    resourceId: (_i, data: { schoolId: string }) => data.schoolId,
+    auditMetadata: (i) => ({ name: i.name, logo: i.logoDataUrl === undefined ? "unchanged" : i.logoDataUrl ? "set" : "removed" }),
+  },
+  async ({ input, principal }): Promise<{ schoolId: string }> => {
+    const schoolId = principal.schoolId;
+    if (!schoolId) throw new ForbiddenError("tenant:missing");
+
+    await prisma.school.update({
+      where: { id: schoolId },
+      data: { name: input.name, ...(input.logoDataUrl === undefined ? {} : { logoDataUrl: input.logoDataUrl }) },
+    });
     revalidatePath("/", "layout");
     return { schoolId };
   },

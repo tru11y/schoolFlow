@@ -53,7 +53,7 @@ export function GenerateButton() {
             );
           })
         }
-        className="min-h-11 rounded-2xl bg-raised px-5 font-medium outline-none ring-1 ring-white/15 transition hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent active:scale-95 disabled:opacity-60"
+        className="min-h-11 rounded-2xl bg-raised px-5 font-medium outline-none ring-1 ring-ink/15 transition hover:bg-surface focus-visible:ring-2 focus-visible:ring-accent active:scale-95 disabled:opacity-60"
       >
         {pending ? "Génération…" : "Générer les échéances mensuelles"}
       </button>

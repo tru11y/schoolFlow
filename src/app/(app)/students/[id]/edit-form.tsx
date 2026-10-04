@@ -6,7 +6,7 @@ import { updateStudent } from "../actions";
 import { ParentsFields, readParents, type ParentValue } from "../parents-fields";
 
 const field =
-  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
 interface Props {
   id: string;

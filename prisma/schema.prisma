@@ -27,6 +27,8 @@ model School {
   name      String
   /// FCFA | EUR | USD | CAD - amounts are stored in minor units of this currency (FCFA: no decimals).
   currency  String    @default("EUR")
+  /// PNG or JPEG (<=150 KB) stored as a data URL; served by /school-logo.
+  logoDataUrl String?
   createdAt DateTime  @default(now())
   deletedAt DateTime?
   users     User[]

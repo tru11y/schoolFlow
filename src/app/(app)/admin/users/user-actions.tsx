@@ -35,7 +35,7 @@ export function UserActions({ id, role, active, assignable }: Props) {
           defaultValue={role}
           disabled={pending}
           onChange={(e) => run(() => changeUserRole({ id, role: e.target.value }), "Rôle modifié")}
-          className="min-h-9 rounded-xl bg-canvas px-2 text-xs outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent"
+          className="min-h-9 rounded-xl bg-canvas px-2 text-xs outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent"
         >
           {roles.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>

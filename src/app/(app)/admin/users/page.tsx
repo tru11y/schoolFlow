@@ -51,7 +51,7 @@ export default async function UsersPage({
 
   const creatable = ROLES.filter((r) => canManageRole(principal.role, r));
   const field =
-    "rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+    "rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
   return (
     <>
@@ -89,7 +89,7 @@ export default async function UsersPage({
             {users.map((u) => {
               const manageable = u.id !== principal.userId && canManageRole(principal.role, u.role);
               return (
-                <tr key={u.id} className="border-t border-white/10 align-top">
+                <tr key={u.id} className="border-t border-ink/10 align-top">
                   <td className="px-4 py-3">
                     <p className="font-medium">{u.firstName} {u.lastName}</p>
                     <p className="text-xs text-ink/70">

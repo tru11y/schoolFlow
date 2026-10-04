@@ -41,7 +41,7 @@ export default async function AuditPage() {
           </thead>
           <tbody>
             {logs.map((l) => (
-              <tr key={l.id} className="border-t border-white/10">
+              <tr key={l.id} className="border-t border-ink/10">
                 <td className="px-4 py-3 tabular-nums">{l.createdAt.toLocaleString("fr-FR")}</td>
                 <td className="px-4 py-3 font-mono text-xs">{l.action}</td>
                 <td className="px-4 py-3">{l.actorRole ?? "—"}</td>

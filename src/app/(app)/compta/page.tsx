@@ -120,7 +120,7 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
           </thead>
           <tbody>
             {visible.map(({ inv, status, carried }) => (
-              <tr key={inv.id} className={`border-t border-white/10 ${carried ? "opacity-50" : ""}`}>
+              <tr key={inv.id} className={`border-t border-ink/10 ${carried ? "opacity-50" : ""}`}>
                 <td className="px-4 py-3">{inv.student.firstName} {inv.student.lastName}</td>
                 <td className="px-4 py-3">{inv.label}</td>
                 <td className="px-4 py-3 tabular-nums">{inv.dueDate.toLocaleDateString("fr-FR")}</td>
@@ -170,7 +170,7 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
           </thead>
           <tbody>
             {payments.map((p) => (
-              <tr key={p.id} className="border-t border-white/10">
+              <tr key={p.id} className="border-t border-ink/10">
                 <td className="px-4 py-3 tabular-nums">{p.paidAt.toLocaleDateString("fr-FR")}</td>
                 <td className="px-4 py-3">{p.student.firstName} {p.student.lastName}</td>
                 <td className="px-4 py-3">{p.description}</td>

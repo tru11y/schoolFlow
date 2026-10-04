@@ -44,7 +44,7 @@ export function PageTitle({ title, subtitle }: { title: string; subtitle?: strin
 const BADGES = {
   success: "bg-mint/15 text-mint",
   warning: "bg-peach/15 text-peach",
-  danger: "bg-red-400/15 text-red-300",
+  danger: "bg-danger/15 text-danger",
   info: "bg-sky/15 text-sky",
 } as const;
 

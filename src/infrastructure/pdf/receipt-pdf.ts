@@ -1,8 +1,10 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import QRCode from "qrcode";
+import type { DecodedLogo } from "@/core/domain/school/logo";
 
 export interface ReceiptPdfData {
   schoolName: string;
+  logo?: DecodedLogo | null;
   studentName: string;
   label: string;
   amount: string;
@@ -27,6 +29,11 @@ export async function buildReceiptPdf(d: ReceiptPdfData): Promise<Uint8Array> {
   page.drawRectangle({ x: 0, y: 742, width: 595, height: 100, color: rgb(0.89, 0.86, 0.99) });
   page.drawText("RECU DE PAIEMENT", { x: 48, y: 785, size: 24, font: bold, color: ink });
   page.drawText(safe(d.schoolName), { x: 48, y: 760, size: 12, font, color: muted });
+  if (d.logo) {
+    const image = d.logo.mime === "image/png" ? await pdf.embedPng(d.logo.bytes) : await pdf.embedJpg(d.logo.bytes);
+    const scaled = image.scaleToFit(64, 64);
+    page.drawImage(image, { x: 595 - 48 - scaled.width, y: 792 - scaled.height / 2, width: scaled.width, height: scaled.height });
+  }
 
   const rows: [string, string][] = [
     ["Eleve", d.studentName],

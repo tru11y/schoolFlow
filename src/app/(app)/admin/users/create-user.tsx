@@ -7,7 +7,7 @@ import { ParentsFields, readParents } from "../../students/parents-fields";
 import { createUser } from "./actions";
 
 const field =
-  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
 interface Props {
   roles: Role[];
@@ -80,18 +80,18 @@ export function CreateUser({ roles, students, levels }: Props) {
             </label>
             <label className="grid gap-1 text-sm">Nom complet
               <input name="fullName" required maxLength={120} autoComplete="off" className={field} />
-              {fieldErrors.fullName ? <span role="alert" className="text-xs text-red-300">Prénom et nom requis</span> : null}
+              {fieldErrors.fullName ? <span role="alert" className="text-xs text-danger">Prénom et nom requis</span> : null}
             </label>
             <label className="grid gap-1 text-sm">E-mail
               <input name="email" type="email" required autoComplete="off" className={field} />
-              {fieldErrors.email ? <span role="alert" className="text-xs text-red-300">E-mail invalide</span> : null}
+              {fieldErrors.email ? <span role="alert" className="text-xs text-danger">E-mail invalide</span> : null}
             </label>
             <label className="grid gap-1 text-sm">Téléphone
               <input name="phone" type="tel" maxLength={30} className={field} />
             </label>
             <label className="grid gap-1 text-sm sm:col-span-2">Mot de passe provisoire (10 caractères min.)
               <input name="password" type="text" required minLength={10} maxLength={128} autoComplete="off" className={field} />
-              {fieldErrors.password ? <span role="alert" className="text-xs text-red-300">10 caractères minimum</span> : null}
+              {fieldErrors.password ? <span role="alert" className="text-xs text-danger">10 caractères minimum</span> : null}
             </label>
 
             {role === "TEACHER" ? (
@@ -103,7 +103,7 @@ export function CreateUser({ roles, students, levels }: Props) {
                   <legend className="mb-1">Classes attribuées</legend>
                   <div className="flex flex-wrap gap-2">
                     {levels.map((l) => (
-                      <label key={l} className="flex min-h-9 items-center gap-2 rounded-xl bg-canvas px-3 ring-1 ring-white/15">
+                      <label key={l} className="flex min-h-9 items-center gap-2 rounded-xl bg-canvas px-3 ring-1 ring-ink/15">
                         <input type="checkbox" name="classLevels" value={l} /> {l}
                       </label>
                     ))}
@@ -136,7 +136,7 @@ export function CreateUser({ roles, students, levels }: Props) {
               </label>
             ) : null}
 
-            {error ? <p role="alert" className="text-sm text-red-300 sm:col-span-2">{error}</p> : null}
+            {error ? <p role="alert" className="text-sm text-danger sm:col-span-2">{error}</p> : null}
             <div className="flex justify-end gap-3 sm:col-span-2">
               <button type="button" onClick={close} className="rounded-2xl px-5 py-2.5 text-ink/80 hover:bg-raised">Annuler</button>
               <button disabled={pending} className="rounded-2xl bg-accent px-5 py-2.5 font-medium text-canvas active:scale-95 disabled:opacity-60">

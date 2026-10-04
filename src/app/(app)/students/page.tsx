@@ -44,7 +44,7 @@ export default async function StudentsPage({
   });
 
   const field =
-    "rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+    "rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
   return (
     <>
@@ -102,7 +102,7 @@ export default async function StudentsPage({
           </thead>
           <tbody>
             {students.map((s) => (
-              <tr key={s.id} className="border-t border-white/10 transition hover:bg-raised/50">
+              <tr key={s.id} className="border-t border-ink/10 transition hover:bg-raised/50">
                 <td className="px-4 py-3">
                   <Link href={`/students/${s.id}`} className="block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent">
                     <span className="font-medium">{s.firstName} {s.lastName}</span>

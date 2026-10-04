@@ -32,7 +32,7 @@ interface Props {
 
 const HOUR_PX = 56;
 const field =
-  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-white/15 focus-visible:ring-2 focus-visible:ring-accent";
+  "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
 
 export function Timetable({ studentId, level, slots, teachers, chapters }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -84,7 +84,7 @@ export function Timetable({ studentId, level, slots, teachers, chapters }: Props
           {Array.from({ length: days }, (_, d) => (
             <div
               key={d}
-              className="relative border-l border-white/10"
+              className="relative border-l border-ink/10"
               style={{
                 height: hours.length * HOUR_PX,
                 backgroundImage: `repeating-linear-gradient(to bottom, transparent 0, transparent ${HOUR_PX - 1}px, rgb(255 255 255 / 0.08) ${HOUR_PX - 1}px, rgb(255 255 255 / 0.08) ${HOUR_PX}px)`,
@@ -155,7 +155,7 @@ export function Timetable({ studentId, level, slots, teachers, chapters }: Props
                 key={d.min}
                 type="button"
                 onClick={() => setEndTime(hhmm(Math.min(toMinutes(startTime) + d.min, 23 * 60 + 59)))}
-                className="min-h-9 rounded-xl bg-canvas px-3 text-xs ring-1 ring-white/15 outline-none hover:bg-raised focus-visible:ring-2 focus-visible:ring-accent active:scale-95"
+                className="min-h-9 rounded-xl bg-canvas px-3 text-xs ring-1 ring-ink/15 outline-none hover:bg-raised focus-visible:ring-2 focus-visible:ring-accent active:scale-95"
               >
                 {d.label}
               </button>
@@ -182,7 +182,7 @@ export function Timetable({ studentId, level, slots, teachers, chapters }: Props
               <option value="student">Cet élève uniquement</option>
             </select>
           </label>
-          {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
+          {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
           <div className="mt-2 flex items-center justify-between gap-3">
             {editing ? (
               <button
@@ -195,7 +195,7 @@ export function Timetable({ studentId, level, slots, teachers, chapters }: Props
                     else setError(res.error.message);
                   })
                 }
-                className="rounded-2xl px-4 py-2 text-sm text-red-300 hover:bg-red-400/10"
+                className="rounded-2xl px-4 py-2 text-sm text-danger hover:bg-danger/10"
               >
                 Supprimer
               </button>
