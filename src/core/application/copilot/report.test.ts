@@ -75,6 +75,24 @@ describe("readLlm", () => {
     expect(await llm.complete("s", "u")).toBe("salut");
   });
 
+  it("retries once with the default model when the configured one is unknown (404)", async () => {
+    const fetchImpl = vi.fn(async (_url: string, init: { body: string }) =>
+      JSON.parse(init.body).model === "claude-3-5-haiku-latest"
+        ? new Response("not found", { status: 404 })
+        : new Response(JSON.stringify({ content: [{ type: "text", text: "repli ok" }] })),
+    );
+    const llm = readLlm({ AI_PROVIDER: "anthropic", AI_API_KEY: "sk-test-key-123", AI_MODEL: "claude-3-5-haiku-latest" }, fetchImpl as unknown as typeof fetch)!;
+    expect(await llm.complete("s", "u")).toBe("repli ok");
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry on auth or rate-limit errors", async () => {
+    const fetchImpl = vi.fn(async () => new Response("no", { status: 401 }));
+    const llm = readLlm({ AI_PROVIDER: "anthropic", AI_API_KEY: "sk-test-key-123", AI_MODEL: "claude-3-5-haiku-latest" }, fetchImpl as unknown as typeof fetch)!;
+    await expect(llm.complete("s", "u")).rejects.toThrow("401");
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
   it("throws on HTTP errors so the caller can fall back", async () => {
     const llm = readLlm({ AI_PROVIDER: "openai", AI_API_KEY: "sk-test-key-123" }, (async () => new Response("no", { status: 429 })) as unknown as typeof fetch)!;
     await expect(llm.complete("s", "u")).rejects.toThrow("429");

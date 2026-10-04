@@ -7,6 +7,9 @@ const TIMEOUT_MS = 20_000;
 
 type Provider = keyof typeof DEFAULT_MODELS;
 
+/** HTTP 400/404 from the provider: the model name was rejected (auth and rate-limit errors are not retried). */
+const isUnknownModel = (err: Error): boolean => err.message.endsWith(" 404") || err.message.endsWith(" 400");
+
 export interface LlmEnv {
   AI_PROVIDER?: Provider | undefined;
   AI_API_KEY?: string | undefined;
@@ -23,6 +26,18 @@ export function readLlm(env: LlmEnv, fetchImpl: typeof fetch = fetch): Llm | nul
   return {
     model,
     async complete(system, user) {
+      try {
+        return await request(model, system, user);
+      } catch (err) {
+        // A retired or mistyped model name must not disable the copilot: retry once with the known-good default.
+        const fallback = DEFAULT_MODELS[provider];
+        if (model !== fallback && err instanceof Error && isUnknownModel(err)) return request(fallback, system, user);
+        throw err;
+      }
+    },
+  };
+
+  async function request(model: string, system: string, user: string): Promise<string> {
       if (provider === "anthropic") {
         const res = await fetchImpl("https://api.anthropic.com/v1/messages", {
           method: "POST",
@@ -46,6 +61,5 @@ export function readLlm(env: LlmEnv, fetchImpl: typeof fetch = fetch): Llm | nul
       if (!res.ok) throw new Error(`openai ${res.status}`);
       const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
       return body.choices?.[0]?.message?.content ?? "";
-    },
-  };
+  }
 }

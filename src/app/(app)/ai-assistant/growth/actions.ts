@@ -46,7 +46,11 @@ export const generateAiSummary = secureAction(
       scope: input.scope,
       day: localParts(new Date()).date,
       store,
-      llm: readLlm({ AI_PROVIDER: e.AI_PROVIDER, AI_API_KEY: e.AI_API_KEY, AI_MODEL: e.AI_MODEL }),
+      llm: readLlm({
+        AI_PROVIDER: e.AI_PROVIDER ?? (e.ANTHROPIC_API_KEY ? "anthropic" : undefined),
+        AI_API_KEY: e.AI_API_KEY ?? e.ANTHROPIC_API_KEY,
+        AI_MODEL: e.AI_MODEL,
+      }),
       system: REPORT_SYSTEM_PROMPT,
       prompt: buildReportPrompt(summary),
       local: localSummary(summary),

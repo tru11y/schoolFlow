@@ -14,6 +14,8 @@ const schema = z.object({
   AI_PROVIDER: optional(z.enum(["anthropic", "openai"])),
   AI_API_KEY: optional(z.string().min(10)),
   AI_MODEL: optional(z.string().min(2)),
+  /** Accepted as the key when AI_API_KEY is not set (implies AI_PROVIDER=anthropic). */
+  ANTHROPIC_API_KEY: optional(z.string().min(10)),
   CRON_SECRET: optional(z.string().min(16)),
   APP_URL: z.string().url(),
   AUTH_LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
