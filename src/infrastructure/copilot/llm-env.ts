@@ -15,16 +15,21 @@ interface Vars {
  * null = no usable key: the copilot stays purely local.
  */
 export function llmFromEnv(e: Vars): Llm | null {
+  const anthropicKey = clean(e.ANTHROPIC_API_KEY);
   return readLlm({
-    AI_PROVIDER: e.AI_PROVIDER ?? (e.ANTHROPIC_API_KEY ? "anthropic" : undefined),
-    AI_API_KEY: e.AI_API_KEY ?? e.ANTHROPIC_API_KEY,
-    AI_MODEL: e.AI_MODEL,
-    ANTHROPIC_WORKSPACE_ID: e.ANTHROPIC_WORKSPACE_ID,
+    AI_PROVIDER: e.AI_PROVIDER ?? (anthropicKey ? "anthropic" : undefined),
+    AI_API_KEY: clean(e.AI_API_KEY) ?? anthropicKey,
+    AI_MODEL: clean(e.AI_MODEL),
+    ANTHROPIC_WORKSPACE_ID: clean(e.ANTHROPIC_WORKSPACE_ID),
   });
 }
 
+/** Pasted secrets often carry a trailing newline or space, which makes providers answer "invalid key". */
+export const clean = (v: string | undefined): string | undefined => v?.trim().replace(/^["']|["']$/g, "") || undefined;
+
 /** The key the free-form chat (Anthropic SDK) uses: ANTHROPIC_API_KEY, else AI_API_KEY when the provider is anthropic. */
 export function chatApiKey(e: Record<string, string | undefined> = process.env): string | undefined {
-  if (e.ANTHROPIC_API_KEY) return e.ANTHROPIC_API_KEY;
-  return e.AI_API_KEY && (e.AI_PROVIDER ?? "anthropic") === "anthropic" ? e.AI_API_KEY : undefined;
+  const anthropic = clean(e.ANTHROPIC_API_KEY);
+  if (anthropic) return anthropic;
+  return (e.AI_PROVIDER ?? "anthropic") === "anthropic" ? clean(e.AI_API_KEY) : undefined;
 }

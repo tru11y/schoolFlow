@@ -17,6 +17,14 @@ describe("llmFromEnv", () => {
   });
 });
 
+describe("pasted secrets", () => {
+  it("tolerates surrounding whitespace, newlines and quotes", () => {
+    expect(chatApiKey({ ANTHROPIC_API_KEY: "  sk-ant-abc123\n" })).toBe("sk-ant-abc123");
+    expect(chatApiKey({ ANTHROPIC_API_KEY: '"sk-ant-abc123"' })).toBe("sk-ant-abc123");
+    expect(chatApiKey({ ANTHROPIC_API_KEY: "  \n" })).toBeUndefined();
+  });
+});
+
 describe("chatApiKey", () => {
   it("prefers ANTHROPIC_API_KEY, falls back to AI_API_KEY only for anthropic", () => {
     expect(chatApiKey({ ANTHROPIC_API_KEY: "a", AI_API_KEY: "b" })).toBe("a");

@@ -1,11 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { buildLlmContext, COPILOT_SYSTEM_PROMPT, restoreNames } from "@/core/domain/copilot/llm-context";
 import type { CopilotSnapshot } from "@/core/domain/copilot/types";
-import { chatApiKey } from "./llm-env";
+import { chatApiKey, clean } from "./llm-env";
 
 /** Org-level keys need the workspace header; the SDK sends these headers on every request. */
 const workspaceHeaders = (): Record<string, string> =>
-  process.env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID } : {};
+  clean(process.env.ANTHROPIC_WORKSPACE_ID) ? { "anthropic-workspace-id": clean(process.env.ANTHROPIC_WORKSPACE_ID)! } : {};
 
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5";
 
