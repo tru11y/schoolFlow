@@ -11,7 +11,7 @@ function authorized(header: string | null): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-const brief = (err: unknown) => (err instanceof Error ? err.message.slice(0, 200) : "unknown");
+const brief = (err: unknown) => (err instanceof Error ? err.message.slice(0, 400) : "unknown");
 
 /**
  * Health check of the AI wiring (same auth as the crons). Makes two 5-token calls, one per code path
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   if (!authorized(req.headers.get("authorization"))) return new Response("Unauthorized", { status: 401 });
 
   const e = env();
-  const llm = llmFromEnv({ AI_PROVIDER: e.AI_PROVIDER, AI_API_KEY: e.AI_API_KEY, AI_MODEL: e.AI_MODEL, ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY });
+  const llm = llmFromEnv({ AI_PROVIDER: e.AI_PROVIDER, AI_API_KEY: e.AI_API_KEY, AI_MODEL: e.AI_MODEL, ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY, ANTHROPIC_WORKSPACE_ID: e.ANTHROPIC_WORKSPACE_ID });
 
   const summaries: Record<string, unknown> = { configured: Boolean(llm), model: llm?.model ?? null };
   if (llm) {

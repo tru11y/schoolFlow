@@ -8,12 +8,22 @@ const TIMEOUT_MS = 20_000;
 type Provider = keyof typeof DEFAULT_MODELS;
 
 /** HTTP 400/404 from the provider: the model name was rejected (auth and rate-limit errors are not retried). */
-const isUnknownModel = (err: Error): boolean => err.message.endsWith(" 404") || err.message.endsWith(" 400");
+class ProviderError extends Error {
+  constructor(provider: string, readonly status: number, detail: string) {
+    super(`${provider} ${status} ${detail}`.trim());
+  }
+}
+
+const isUnknownModel = (err: Error): boolean => err instanceof ProviderError && (err.status === 404 || err.status === 400);
+
+/** Provider error body, trimmed: it explains the rejection and never contains our key. */
+const detailOf = async (res: Response): Promise<string> => (await res.text().catch(() => "")).slice(0, 300);
 
 export interface LlmEnv {
   AI_PROVIDER?: Provider | undefined;
   AI_API_KEY?: string | undefined;
   AI_MODEL?: string | undefined;
+  ANTHROPIC_WORKSPACE_ID?: string | undefined;
 }
 
 /** null (copilot stays 100% local) unless a provider and a key are configured. */
@@ -41,11 +51,16 @@ export function readLlm(env: LlmEnv, fetchImpl: typeof fetch = fetch): Llm | nul
       if (provider === "anthropic") {
         const res = await fetchImpl("https://api.anthropic.com/v1/messages", {
           method: "POST",
-          headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+          headers: {
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+            ...(env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": env.ANTHROPIC_WORKSPACE_ID } : {}),
+          },
           body: JSON.stringify({ model, max_tokens: MAX_OUTPUT_TOKENS, temperature: 0.3, system, messages: [{ role: "user", content: user }] }),
           signal: AbortSignal.timeout(TIMEOUT_MS),
         });
-        if (!res.ok) throw new Error(`anthropic ${res.status}`);
+        if (!res.ok) throw new ProviderError("anthropic", res.status, await detailOf(res));
         const body = (await res.json()) as { content?: { type: string; text?: string }[] };
         return body.content?.find((c) => c.type === "text")?.text ?? "";
       }
@@ -58,7 +73,7 @@ export function readLlm(env: LlmEnv, fetchImpl: typeof fetch = fetch): Llm | nul
         }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
-      if (!res.ok) throw new Error(`openai ${res.status}`);
+      if (!res.ok) throw new ProviderError("openai", res.status, await detailOf(res));
       const body = (await res.json()) as { choices?: { message?: { content?: string } }[] };
       return body.choices?.[0]?.message?.content ?? "";
   }

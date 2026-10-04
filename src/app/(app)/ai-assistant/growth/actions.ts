@@ -46,7 +46,7 @@ export const generateAiSummary = secureAction(
       scope: input.scope,
       day: localParts(new Date()).date,
       store,
-      llm: llmFromEnv({ AI_PROVIDER: e.AI_PROVIDER, AI_API_KEY: e.AI_API_KEY, AI_MODEL: e.AI_MODEL, ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY }),
+      llm: llmFromEnv({ AI_PROVIDER: e.AI_PROVIDER, AI_API_KEY: e.AI_API_KEY, AI_MODEL: e.AI_MODEL, ANTHROPIC_API_KEY: e.ANTHROPIC_API_KEY, ANTHROPIC_WORKSPACE_ID: e.ANTHROPIC_WORKSPACE_ID }),
       system: REPORT_SYSTEM_PROMPT,
       prompt: buildReportPrompt(summary),
       local: localSummary(summary),

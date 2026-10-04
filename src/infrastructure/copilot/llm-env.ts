@@ -6,6 +6,7 @@ interface Vars {
   AI_API_KEY?: string | undefined;
   AI_MODEL?: string | undefined;
   ANTHROPIC_API_KEY?: string | undefined;
+  ANTHROPIC_WORKSPACE_ID?: string | undefined;
 }
 
 /**
@@ -18,6 +19,7 @@ export function llmFromEnv(e: Vars): Llm | null {
     AI_PROVIDER: e.AI_PROVIDER ?? (e.ANTHROPIC_API_KEY ? "anthropic" : undefined),
     AI_API_KEY: e.AI_API_KEY ?? e.ANTHROPIC_API_KEY,
     AI_MODEL: e.AI_MODEL,
+    ANTHROPIC_WORKSPACE_ID: e.ANTHROPIC_WORKSPACE_ID,
   });
 }
 

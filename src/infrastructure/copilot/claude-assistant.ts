@@ -3,6 +3,10 @@ import { buildLlmContext, COPILOT_SYSTEM_PROMPT, restoreNames } from "@/core/dom
 import type { CopilotSnapshot } from "@/core/domain/copilot/types";
 import { chatApiKey } from "./llm-env";
 
+/** Org-level keys need the workspace header; the SDK sends these headers on every request. */
+const workspaceHeaders = (): Record<string, string> =>
+  process.env.ANTHROPIC_WORKSPACE_ID ? { "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID } : {};
+
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-5-5";
 
 export const llmEnabled = (): boolean => Boolean(chatApiKey());
@@ -18,7 +22,7 @@ export async function askClaude(question: string, snapshot: CopilotSnapshot): Pr
   if (!llmEnabled()) return { text: null, failed: false };
   const { text: context, names } = buildLlmContext(snapshot);
   try {
-    client ??= new Anthropic({ apiKey: chatApiKey(), timeout: 30_000, maxRetries: 1 });
+    client ??= new Anthropic({ apiKey: chatApiKey(), defaultHeaders: workspaceHeaders(), timeout: 30_000, maxRetries: 1 });
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 800,
@@ -47,13 +51,13 @@ export async function askClaude(question: string, snapshot: CopilotSnapshot): Pr
 export async function pingChat(): Promise<{ configured: boolean; model: string; ok?: boolean; error?: string }> {
   if (!llmEnabled()) return { configured: false, model: MODEL };
   try {
-    client ??= new Anthropic({ apiKey: chatApiKey(), timeout: 30_000, maxRetries: 1 });
+    client ??= new Anthropic({ apiKey: chatApiKey(), defaultHeaders: workspaceHeaders(), timeout: 30_000, maxRetries: 1 });
     const res = await client.messages.create({ model: MODEL, max_tokens: 5, messages: [{ role: "user", content: "ping" }] });
     return { configured: true, model: MODEL, ok: res.content.length > 0 };
   } catch (err) {
     return {
       configured: true, model: MODEL, ok: false,
-      error: err instanceof Anthropic.APIError ? `${err.status} ${err.message}`.slice(0, 200) : "unknown",
+      error: err instanceof Anthropic.APIError ? `${err.status} ${err.message}`.slice(0, 400) : "unknown",
     };
   }
 }
