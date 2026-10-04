@@ -1,10 +1,9 @@
 "use client";
 
 import { Send, Sparkles } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AssistantReply } from "@/core/domain/copilot/assistant";
 import { ActionLinks } from "@/presentation/components/copilot-cards";
-import { askCopilot } from "./actions";
 
 type Turn = { question: string; reply: AssistantReply | { error: string } };
 
@@ -18,25 +17,49 @@ const SUGGESTIONS = [
 
 export function Chat({ initialQuestion }: { initialQuestion?: string }) {
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [pending, start] = useTransition();
+  const [pending, setPending] = useState(false);
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const asked = useRef(false);
 
-  function ask(question: string) {
+  /** Plain fetch with explicit handling: whatever happens, the turn gets an answer and the loader stops. */
+  async function send(q: string): Promise<Turn["reply"]> {
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question: q }),
+        signal: AbortSignal.timeout(35_000),
+      });
+      if (res.redirected) return { error: "Session expirée. Reconnectez-vous puis réessayez." };
+      const data: unknown = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = (data as { error?: string } | null)?.error;
+        return { error: message ?? `Le service a répondu avec une erreur (${res.status}).` };
+      }
+      return data as AssistantReply;
+    } catch {
+      return { error: "Impossible de joindre l'assistant (connexion ou délai dépassé). Réessayez dans un instant." };
+    }
+  }
+
+  async function ask(question: string) {
     const q = question.trim();
-    if (q.length < 2) return;
+    if (q.length < 2 || pending) return;
     setDraft("");
-    start(async () => {
-      const res = await askCopilot({ question: q });
-      setTurns((t) => [...t, { question: q, reply: res.ok ? res.data : { error: res.error.message } }]);
-    });
+    setPending(true);
+    try {
+      const reply = await send(q);
+      setTurns((t) => [...t, { question: q, reply }]);
+    } finally {
+      setPending(false);
+    }
   }
 
   useEffect(() => {
     if (initialQuestion && !asked.current) {
       asked.current = true;
-      ask(initialQuestion);
+      void ask(initialQuestion);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once for the ?q= deep link
   }, [initialQuestion]);
@@ -81,14 +104,14 @@ export function Chat({ initialQuestion }: { initialQuestion?: string }) {
 
       <div className="flex flex-wrap gap-2">
         {SUGGESTIONS.map((s) => (
-          <button key={s} type="button" onClick={() => ask(s)} disabled={pending} className="rounded-full bg-surface px-3 py-1.5 text-xs ring-1 ring-ink/15 transition hover:bg-raised active:scale-95 disabled:opacity-60">
+          <button key={s} type="button" onClick={() => void ask(s)} disabled={pending} className="rounded-full bg-surface px-3 py-1.5 text-xs ring-1 ring-ink/15 transition hover:bg-raised active:scale-95 disabled:opacity-60">
             {s}
           </button>
         ))}
       </div>
 
       <form
-        onSubmit={(e) => { e.preventDefault(); ask(draft); }}
+        onSubmit={(e) => { e.preventDefault(); void ask(draft); }}
         className="sticky bottom-4 flex items-center gap-2 rounded-3xl bg-surface p-2 shadow-soft ring-1 ring-ink/15"
       >
         <input

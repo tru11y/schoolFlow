@@ -22,7 +22,7 @@ export async function askClaude(question: string, snapshot: CopilotSnapshot): Pr
   if (!llmEnabled()) return { text: null, failed: false };
   const { text: context, names } = buildLlmContext(snapshot);
   try {
-    client ??= new Anthropic({ apiKey: chatApiKey(), defaultHeaders: workspaceHeaders(), timeout: 30_000, maxRetries: 1 });
+    client ??= new Anthropic({ apiKey: chatApiKey(), defaultHeaders: workspaceHeaders(), timeout: 20_000, maxRetries: 0 });
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 800,
@@ -51,7 +51,7 @@ export async function askClaude(question: string, snapshot: CopilotSnapshot): Pr
 export async function pingChat(): Promise<{ configured: boolean; model: string; ok?: boolean; error?: string }> {
   if (!llmEnabled()) return { configured: false, model: MODEL };
   try {
-    client ??= new Anthropic({ apiKey: chatApiKey(), defaultHeaders: workspaceHeaders(), timeout: 30_000, maxRetries: 1 });
+    client ??= new Anthropic({ apiKey: chatApiKey(), defaultHeaders: workspaceHeaders(), timeout: 20_000, maxRetries: 0 });
     const res = await client.messages.create({ model: MODEL, max_tokens: 5, messages: [{ role: "user", content: "ping" }] });
     return { configured: true, model: MODEL, ok: res.content.length > 0 };
   } catch (err) {
