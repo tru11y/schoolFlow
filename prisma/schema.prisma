@@ -155,6 +155,21 @@ model CurriculumChapter {
   @@map("curriculum_chapters")
 }
 
+/// Cached LLM report: at most one model call per school, scope and day.
+model AiReport {
+  id        String   @id @default(uuid()) @db.Uuid
+  schoolId  String   @db.Uuid
+  /// "school" or "class:<level>"
+  scope     String
+  day       DateTime @db.Date
+  content   String
+  model     String
+  createdAt DateTime @default(now())
+
+  @@unique([schoolId, scope, day])
+  @@map("ai_reports")
+}
+
 model Course {
   id          String             @id @default(uuid()) @db.Uuid
   schoolId    String             @db.Uuid

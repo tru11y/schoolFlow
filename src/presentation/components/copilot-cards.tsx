@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ActionCard, ActionLink, CardCategory } from "@/core/domain/copilot/types";
+import type { RoiAction } from "@/core/domain/copilot/roi";
+import { formatMoney } from "@/core/domain/finance/money";
 
 const CATEGORY: Record<CardCategory, { label: string; tone: string }> = {
   FINANCE: { label: "Urgence financière", tone: "bg-mint/15 text-mint" },
@@ -46,6 +48,27 @@ export function TodayPanel({ cards }: { cards: ActionCard[] }) {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/** "3 actions à fort ROI pour aujourd'hui": the highest amounts at stake, computed locally. */
+export function RoiPanel({ actions, currency }: { actions: RoiAction[]; currency: string }) {
+  if (actions.length === 0) return null;
+  return (
+    <section aria-labelledby="roi-title" className="mt-6 rounded-3xl bg-gradient-to-br from-accent/15 to-lilac/10 p-6 shadow-soft ring-1 ring-accent/20">
+      <h2 id="roi-title" className="text-lg font-semibold">🎯 {actions.length} action{actions.length > 1 ? "s" : ""} à fort ROI pour aujourd&apos;hui</h2>
+      <ol className="mt-4 grid gap-3 md:grid-cols-3">
+        {actions.map((a, i) => (
+          <li key={a.id} className="rounded-2xl bg-surface/80 p-4 ring-1 ring-ink/10">
+            <p className="text-xs font-medium text-ink/60">#{i + 1}</p>
+            <p className="mt-1 font-medium">{a.title}</p>
+            <p className="mt-1 text-lg font-semibold text-mint">→ {formatMoney(a.impactCents, currency)}</p>
+            <p className="mt-1 text-sm text-ink/70">{a.detail}</p>
+            <ActionLinks links={[{ label: "Agir", kind: "page", href: a.href }]} />
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
