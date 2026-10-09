@@ -155,6 +155,41 @@ model CurriculumChapter {
   @@map("curriculum_chapters")
 }
 
+/// A competing establishment tracked for pricing benchmarks (SUPER_ADMIN copilot).
+model Competitor {
+  id        String          @id @default(uuid()) @db.Uuid
+  schoolId  String          @db.Uuid
+  name      String
+  /// District / commune, e.g. "Cocody"
+  area      String?
+  contact   String?
+  /// Key offers (packs, promotions, guarantees…)
+  offers    String?
+  /// Free comments
+  notes     String?
+  fees      CompetitorFee[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  deletedAt DateTime?
+
+  @@index([schoolId])
+  @@map("competitors")
+}
+
+/// Monthly fee a competitor charges for one class level, in minor units of the school currency.
+model CompetitorFee {
+  id           String     @id @default(uuid()) @db.Uuid
+  schoolId     String     @db.Uuid
+  competitorId String     @db.Uuid
+  competitor   Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+  level        String
+  monthlyFee   Int
+
+  @@unique([competitorId, level])
+  @@index([schoolId])
+  @@map("competitor_fees")
+}
+
 /// Cached LLM report: at most one model call per school, scope and day.
 model AiReport {
   id        String   @id @default(uuid()) @db.Uuid

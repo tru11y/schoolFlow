@@ -1,4 +1,5 @@
 import { formatMoney } from "../finance/money";
+import { MIN_COMPETITORS, competitorStats, type CompetitorView } from "./competitors";
 
 /**
  * INDICATIVE reference values for group reinforcement lessons (Abidjan / West Africa), in FCFA per month.
@@ -57,6 +58,8 @@ export interface GrowthSnapshot {
   /** Families with 2+ active students sharing a parent contact. */
   siblingFamilies: number;
   siblingStudents: number;
+  /** Competitors entered by the SUPER_ADMIN; their real prices replace the indicative matrix once there are enough of them. */
+  competitors?: CompetitorView[];
 }
 
 export type PricePosition = "no_fee" | "unknown_level" | "below_market" | "low" | "aligned" | "above_market";
@@ -68,18 +71,36 @@ export interface PricingAnalysis {
   /** Extra monthly revenue (minor units) if the fee moved to the market median. */
   upliftCents: number;
   suggestion: string;
+  /** What the comparison is based on */
+  source: "concurrents" | "référentiel" | null;
+  /** Number of competitor price points used (0 for the indicative matrix) */
+  sample: number;
 }
 
-/** FCFA has no minor unit: minor units == FCFA. The benchmark only applies to FCFA schools. */
-export function analyzePricing(levels: LevelStat[], currency: string): PricingAnalysis[] | null {
-  if (currency !== "FCFA") return null;
+/**
+ * Pricing against the market. Real competitor prices (3 or more on a level) take precedence; otherwise the indicative
+ * FCFA matrix is used. Returns null when neither is available (non-FCFA school without enough competitor data).
+ */
+export function analyzePricing(levels: LevelStat[], currency: string, competitors: CompetitorView[] = []): PricingAnalysis[] | null {
+  const matrixApplies = currency === "FCFA";
+  const stats = (level: string) => competitorStats(normalizeLevel(level), competitors);
+  if (!matrixApplies && !levels.some((l) => stats(l.level).count >= MIN_COMPETITORS)) return null;
+
+  const money = (c: number) => formatMoney(c, currency);
   return levels.map((l) => {
     const key = normalizeLevel(l.level);
-    const market = key ? MARKET_FEES_FCFA[key] : undefined;
-    const base = { level: l.level, feeCents: l.feeCents, upliftCents: 0 };
-    if (!market) return { ...base, position: "unknown_level", suggestion: "Niveau absent du référentiel de marché." };
+    const real = stats(l.level);
+    const useReal = real.count >= MIN_COMPETITORS;
+    const matrix = matrixApplies && key ? MARKET_FEES_FCFA[key] : undefined;
+    const market = useReal ? { low: real.min, median: real.median, high: real.max } : matrix;
+    const source = useReal ? ("concurrents" as const) : market ? ("référentiel" as const) : null;
+    const sample = useReal ? real.count : 0;
+    const base = { level: l.level, feeCents: l.feeCents, upliftCents: 0, source, sample };
+    const basis = useReal ? `${real.count} concurrent(s)` : "le marché (référentiel indicatif)";
+
+    if (!market) return { ...base, position: "unknown_level", suggestion: "Pas de donnée de marché pour ce niveau : ajoutez des concurrents." };
     if (l.feeCents === null) {
-      return { ...base, position: "no_fee", suggestion: `Aucun tarif configuré : le marché pratique ${formatMoney(market.low, "FCFA")} à ${formatMoney(market.high, "FCFA")}.` };
+      return { ...base, position: "no_fee", suggestion: `Aucun tarif configuré : ${basis} pratique${useReal ? "nt" : ""} ${money(market.low)} à ${money(market.high)}.` };
     }
     const fee = l.feeCents;
     if (fee < market.low || fee < market.median * 0.95) {
@@ -89,19 +110,19 @@ export function analyzePricing(levels: LevelStat[], currency: string): PricingAn
         position: fee < market.low ? "below_market" : "low",
         upliftCents: uplift,
         suggestion:
-          `${formatMoney(fee, "FCFA")} est ${fee < market.low ? "sous la fourchette" : "sous la médiane"} du marché ` +
-          `(${formatMoney(market.low, "FCFA")}–${formatMoney(market.high, "FCFA")}). Un ajustement à ${formatMoney(market.median, "FCFA")} ` +
-          `rapporterait ${formatMoney(uplift, "FCFA")}/mois sur ${l.students} élève(s).`,
+          `${money(fee)} est ${fee < market.low ? "sous la fourchette" : "sous la médiane"} de ${basis} ` +
+          `(${money(market.low)}–${money(market.high)}). Un ajustement à ${money(market.median)} ` +
+          `rapporterait ${money(uplift)}/mois sur ${l.students} élève(s).`,
       };
     }
     if (fee > market.high) {
       return {
         ...base,
         position: "above_market",
-        suggestion: `Tarif au-dessus du marché (max ${formatMoney(market.high, "FCFA")}) : appuyez-le avec une option (suivi, examen) ou un pack d'essai.`,
+        suggestion: `Tarif au-dessus de ${basis} (max ${money(market.high)}) : appuyez-le avec une option (suivi, examen) ou un pack d'essai.`,
       };
     }
-    return { ...base, position: "aligned", suggestion: "Tarif aligné sur le marché." };
+    return { ...base, position: "aligned", suggestion: `Tarif aligné sur ${basis}.` };
   });
 }
 
@@ -194,7 +215,7 @@ export function buildInsights(g: GrowthSnapshot): Insight[] {
   const out: Insight[] = [];
   const money = (c: number) => formatMoney(c, g.currency);
 
-  for (const p of analyzePricing(g.levels, g.currency) ?? []) {
+  for (const p of analyzePricing(g.levels, g.currency, g.competitors) ?? []) {
     if (p.upliftCents > 0) out.push({ id: `price-${p.level}`, kind: "pricing", title: `Ajuster le tarif ${p.level}`, detail: p.suggestion, impactCents: p.upliftCents });
   }
   for (const s of analyzeClassSizes(g.levels, g.currency)) {

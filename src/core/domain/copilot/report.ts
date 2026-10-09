@@ -1,5 +1,6 @@
 import { formatMoney } from "../finance/money";
 import { analyzePricing, MARKET_FEES_FCFA, normalizeLevel, type GrowthSnapshot, type Insight } from "./benchmark";
+import { COMPETITOR_LEVELS, competitorStats } from "./competitors";
 import type { CopilotSnapshot } from "./types";
 
 /** Compact, anonymous aggregates: this is the ONLY thing ever sent to a language model (no names, phones, e-mails). */
@@ -11,6 +12,8 @@ export interface SummaryInput {
   absentStudentsThisWeek: number;
   teachersWithIssues: number;
   topInsights: { title: string; impact: number }[];
+  /** Anonymous aggregates of the competitors entered by the SUPER_ADMIN */
+  competitors: { count: number; byLevel: { level: string; samples: number; min: number; median: number; max: number }[] };
 }
 
 export const REPORT_SYSTEM_PROMPT =
@@ -40,6 +43,13 @@ export function buildSummaryInput(s: CopilotSnapshot, g: GrowthSnapshot, insight
       .filter((i) => level === null || i.id.endsWith(`-${level}`))
       .slice(0, 4)
       .map((i) => ({ title: i.title, impact: i.impactCents })),
+    competitors: {
+      count: (g.competitors ?? []).length,
+      byLevel: COMPETITOR_LEVELS.filter((l) => level === null || normalizeLevel(level) === l).flatMap((l) => {
+        const st = competitorStats(l, g.competitors ?? []);
+        return st.count > 0 ? [{ level: l, samples: st.count, min: st.min, median: st.median, max: st.max }] : [];
+      }),
+    },
   };
 }
 

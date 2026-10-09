@@ -9,6 +9,7 @@ type Turn = { question: string; reply: AssistantReply | { error: string } };
 
 const SUGGESTIONS = [
   "Quoi faire aujourd'hui ?",
+  "Liste des concurrents et comparaison de nos tarifs",
   "Qui sont les 3 profs les moins assidus ?",
   "Relance pour les arriérés de la 3ème",
   "Quels élèves sont absents cette semaine ?",

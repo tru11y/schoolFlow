@@ -2,9 +2,11 @@ import { formatMoney } from "../finance/money";
 import {
   absenceMessage, arrearsMessage, buildActionCards, contactLinks, rankTeachers, underStaffed, upcomingMessage,
 } from "./rules";
+import { competitorStats, feesText, mentioned, wantedLevel } from "./competitors";
+import { normalizeLevel } from "./benchmark";
 import type { ActionLink, CopilotSnapshot } from "./types";
 
-export type Intent = "ai" | "arrears" | "upcoming" | "absences" | "teachers" | "growth" | "today" | "help";
+export type Intent = "ai" | "competitors" | "arrears" | "upcoming" | "absences" | "teachers" | "growth" | "today" | "help";
 
 export interface ReplyItem {
   title: string;
@@ -23,6 +25,8 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 /** Order matters: "profs les moins assidus" must not fall into the student attendance intent. */
 export function detectIntent(question: string): Intent {
   const q = fold(question);
+  // Competitors first: "compare nos tarifs avec le Centre X" must not fall into the pricing / growth intents.
+  if (/concurren|rival|benchmark|compar\w*\s.*tarif|tarifs?\s.*(centre|etablissement|ecole)/.test(q)) return "competitors";
   if (/\b(prof|profs|professeur|professeurs|enseignant|enseignants)\b/.test(q)) return "teachers";
   if (/echeance|prochain.*paiement|rappel.*paiement|avant la fin du mois/.test(q)) return "upcoming";
   if (/arrier|impay|reliquat|relance|recouvr|dette/.test(q)) return "arrears";
@@ -89,6 +93,47 @@ export function answer(question: string, s: CopilotSnapshot): AssistantReply {
           title: `${i + 1}. ${t.teacherName}`,
           detail: `${t.missedRollCalls} appel(s) manqué(s) · ${t.lateRollCalls} en retard · ${t.missingLogbook} cahier(s) manquant(s) sur ${t.expectedSessions} séance(s)`,
           links: [],
+        })),
+      };
+    }
+    case "competitors": {
+      const list = s.competitors ?? [];
+      const page = [{ label: "Gérer les concurrents", kind: "page" as const, href: "/ai-assistant/competitors" }];
+      if (list.length === 0) {
+        return {
+          intent,
+          text: "Aucun concurrent n'est encore enregistré. Saisissez-les (nom, zone, tarifs par niveau, offres) pour obtenir des comparaisons chiffrées.",
+          items: [{ title: "Ajouter la concurrence locale", detail: "Réservé au SuperAdmin.", links: page }],
+        };
+      }
+      const named = mentioned(question, list);
+      const subset = (named.length > 0 ? named : list).slice(0, 15);
+      const level = wantedLevel(question);
+      const own = level ? s.levels.find((l) => normalizeLevel(l.level) === level) : undefined;
+      const stats = competitorStats(level, list);
+      const lines: string[] = [`${list.length} concurrent(s) enregistré(s)${named.length > 0 ? `, ${named.length} correspondant à votre demande` : ""}.`];
+      if (level) {
+        lines.push(
+          stats.count === 0
+            ? `Aucun concurrent n'a de tarif renseigné en ${level}.`
+            : `En ${level}, ${stats.count} concurrent(s) : de ${money(stats.min)} à ${money(stats.max)}, médiane ${money(stats.median)}.`,
+        );
+        if (own?.feeCents != null) {
+          const gap = own.feeCents - stats.median;
+          lines.push(
+            stats.count === 0
+              ? `Votre tarif ${own.level} : ${money(own.feeCents)}.`
+              : `Votre tarif ${own.level} : ${money(own.feeCents)}, soit ${gap === 0 ? "égal à" : `${money(Math.abs(gap))} ${gap > 0 ? "au-dessus de" : "en dessous de"}`} la médiane.`,
+          );
+        }
+      }
+      return {
+        intent,
+        text: lines.join("\n"),
+        items: subset.map((c) => ({
+          title: `${c.name}${c.area ? ` · ${c.area}` : ""}`,
+          detail: [feesText(c, s.currency, level), c.offers ? `Offres : ${c.offers}` : "", c.notes ? `Commentaires : ${c.notes}` : ""].filter(Boolean).join(" — "),
+          links: page,
         })),
       };
     }

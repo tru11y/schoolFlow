@@ -34,7 +34,7 @@ export default async function GrowthPage() {
   const now = new Date();
   const money = (c: number) => formatMoney(c, growth.currency);
 
-  const pricing = analyzePricing(growth.levels, growth.currency);
+  const pricing = analyzePricing(growth.levels, growth.currency, growth.competitors);
   const sizes = analyzeClassSizes(growth.levels, growth.currency);
   const courses = analyzeCourses(growth.courses);
   const insights = buildInsights(growth);
@@ -66,7 +66,10 @@ export default async function GrowthPage() {
         </Card>
 
         <Card className="overflow-x-auto p-2 sm:p-4">
-          <h2 className="px-3 pt-2 text-lg font-semibold">Tarifs face au marché</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 pt-2">
+            <h2 className="text-lg font-semibold">Tarifs face au marché</h2>
+            <Link href="/ai-assistant/competitors" className="text-sm font-medium text-accent hover:underline">Gérer les concurrents ({growth.competitors?.length ?? 0})</Link>
+          </div>
           {pricing === null ? (
             <p className="px-3 pb-3 pt-2 text-sm text-ink/70">Le référentiel de marché est exprimé en FCFA : il ne s&apos;applique pas à la devise de l&apos;école.</p>
           ) : (
@@ -86,7 +89,7 @@ export default async function GrowthPage() {
                       <td className="px-3 py-3 font-medium">{p.level}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{p.feeCents === null ? "—" : money(p.feeCents)}</td>
                       <td className="px-3 py-3"><Badge tone={POSITION[p.position].tone}>{POSITION[p.position].label}</Badge></td>
-                      <td className="px-3 py-3 text-ink/80">{p.suggestion}</td>
+                      <td className="px-3 py-3 text-ink/80">{p.suggestion}{p.source ? <span className="mt-1 block text-xs text-ink/60">Base : {p.source === "concurrents" ? `${p.sample} concurrent(s) saisis` : "référentiel indicatif"}</span> : null}</td>
                     </tr>
                   ))}
                 </tbody>

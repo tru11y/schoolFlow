@@ -6,6 +6,7 @@ import type {
 } from "@/core/domain/copilot/types";
 import { toMinutes } from "@/core/domain/students/timetable";
 import { prisma } from "@/infrastructure/db/prisma";
+import { loadCompetitors } from "./competitor-service";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 
 const DAY_MS = 86_400_000;
@@ -49,7 +50,7 @@ export async function loadSnapshot(principal: Principal, now: Date = new Date())
       where: { date: { gte: new Date(shiftDate(local.date, -(ATTENDANCE_WINDOW_DAYS - 1))), lte: today }, status: { not: "PRESENT" } },
       select: { studentId: true, status: true, student: { select: studentSelect } },
     }),
-    db.gradeLevel.findMany({ select: { name: true }, orderBy: { position: "asc" } }),
+    db.gradeLevel.findMany({ select: { name: true, monthlyFee: true }, orderBy: { position: "asc" } }),
     db.studentProfile.findMany({ where: { status: "ACTIVE", user: { deletedAt: null } }, select: { level: true } }),
   ]);
 
@@ -75,6 +76,7 @@ export async function loadSnapshot(principal: Principal, now: Date = new Date())
     })
     .sort((a, b) => b.absences + b.lates - (a.absences + a.lates));
 
+  const fees = new Map(levelRows.map((l) => [l.name, l.monthlyFee]));
   const sizes = new Map(levelRows.map((l) => [l.name, 0]));
   for (const s of students) sizes.set(s.level, (sizes.get(s.level) ?? 0) + 1);
 
@@ -85,7 +87,8 @@ export async function loadSnapshot(principal: Principal, now: Date = new Date())
     upcoming: toArrear(upcoming),
     absences,
     teachers: await teacherPunctuality(principal, now),
-    levels: [...sizes.entries()].map(([level, count]) => ({ level, students: count })),
+    levels: [...sizes.entries()].map(([level, count]) => ({ level, students: count, feeCents: fees.get(level) ?? null })),
+    competitors: await loadCompetitors(db),
   };
 }
 

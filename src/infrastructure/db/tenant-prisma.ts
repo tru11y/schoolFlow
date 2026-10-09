@@ -4,7 +4,7 @@ import { prisma } from "./prisma";
 
 /** Models carrying a `schoolId` column. Every new tenant-owned model must be listed here. */
 const TENANT_MODELS = new Set([
-  "User", "Invoice", "AttendanceRecord", "LogbookEntry", "StudentProfile", "Course", "CourseEnrollment", "ParentContact", "TimetableSlot", "AttendanceSession", "GuardianLink", "CurriculumChapter", "GradeLevel", "Payment", "AiReport",
+  "User", "Invoice", "AttendanceRecord", "LogbookEntry", "StudentProfile", "Course", "CourseEnrollment", "ParentContact", "TimetableSlot", "AttendanceSession", "GuardianLink", "CurriculumChapter", "GradeLevel", "Payment", "AiReport", "Competitor", "CompetitorFee",
 ]);
 
 /** Prisma client whose queries on tenant models are automatically restricted to the principal's school. */

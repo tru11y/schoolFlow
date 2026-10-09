@@ -1,3 +1,5 @@
+import type { CompetitorView } from "./competitors";
+
 export interface Contact {
   name: string;
   phone: string | null;
@@ -34,6 +36,8 @@ export interface TeacherPunctuality {
 export interface LevelSize {
   level: string;
   students: number;
+  /** Configured monthly fee (minor units), when known */
+  feeCents?: number | null;
 }
 
 export interface CopilotSnapshot {
@@ -44,6 +48,8 @@ export interface CopilotSnapshot {
   absences: StudentAbsenceFlag[];
   teachers: TeacherPunctuality[];
   levels: LevelSize[];
+  /** Competitors entered by the SUPER_ADMIN */
+  competitors?: CompetitorView[];
 }
 
 export type CardCategory = "FINANCE" | "DISCIPLINE" | "PEDAGOGY" | "GROWTH";

@@ -1,4 +1,6 @@
 import { formatMoney } from "../finance/money";
+import { competitorStats, feesText } from "./competitors";
+import { normalizeLevel } from "./benchmark";
 import { rankTeachers } from "./rules";
 import type { CopilotSnapshot } from "./types";
 
@@ -38,9 +40,26 @@ export function buildLlmContext(s: CopilotSnapshot): LlmContext {
       : rankTeachers(s.teachers).map((t) => `- ${code("P", t.teacherName)} : ${t.missedRollCalls} appel(s) manqué(s), ${t.lateRollCalls} en retard, ${t.missingLogbook} cahier(s) non rempli(s) sur ${t.expectedSessions} séance(s)`)),
     "",
     "Effectif par classe :",
-    ...s.levels.map((l) => `- ${l.level} : ${l.students} élève(s)`),
+    ...s.levels.map((l) => `- ${l.level} : ${l.students} élève(s)${l.feeCents != null ? `, tarif mensuel ${money(l.feeCents)}` : ""}`),
+    ...competitorLines(s, money),
   ];
   return { text: lines.join("\n"), names };
+}
+
+/** Competitors are businesses (not personal data): names, zones, prices and offers are sent as-is. */
+function competitorLines(s: CopilotSnapshot, money: (c: number) => string): string[] {
+  const list = s.competitors ?? [];
+  if (list.length === 0) return ["", "Concurrents : aucun enregistré."];
+  const out = ["", `Concurrents enregistrés (${list.length}) :`];
+  for (const c of list.slice(0, 20)) {
+    const extra = [c.offers ? `offres : ${c.offers.slice(0, 200)}` : "", c.notes ? `commentaires : ${c.notes.slice(0, 200)}` : ""].filter(Boolean).join(" ; ");
+    out.push(`- ${c.name}${c.area ? ` (${c.area})` : ""} : ${feesText(c, s.currency)}${extra ? ` ; ${extra}` : ""}`);
+  }
+  const medians = s.levels.flatMap((l) => {
+    const stats = competitorStats(normalizeLevel(l.level), list);
+    return stats.count > 0 ? [`${l.level} : médiane ${money(stats.median)} sur ${stats.count} concurrent(s)${l.feeCents != null ? `, notre tarif ${money(l.feeCents)}` : ""}`] : [];
+  });
+  return medians.length > 0 ? [...out, "Comparaison par niveau :", ...medians.map((m) => `- ${m}`)] : out;
 }
 
 /** Puts real names back where the model wrote a code; unknown codes are left untouched. */

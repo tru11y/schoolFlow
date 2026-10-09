@@ -2,6 +2,7 @@ import type { Principal } from "@/core/domain/auth/principal";
 import { groupSiblings, type GrowthSnapshot } from "@/core/domain/copilot/benchmark";
 import { prisma } from "@/infrastructure/db/prisma";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
+import { loadCompetitors } from "./competitor-service";
 
 /** Deterministic read of what the benchmark needs (fees, class sizes, session fill, families). Zero tokens. */
 export async function loadGrowth(principal: Principal): Promise<GrowthSnapshot> {
@@ -29,5 +30,6 @@ export async function loadGrowth(principal: Principal): Promise<GrowthSnapshot> 
     courses: courses.map((c) => ({ name: c.name, weekday: c.weekday, startTime: c.startTime, enrolled: c._count.enrollments })),
     siblingFamilies: siblings.families,
     siblingStudents: siblings.students,
+    competitors: await loadCompetitors(db),
   };
 }

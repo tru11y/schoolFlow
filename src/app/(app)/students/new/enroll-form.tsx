@@ -18,7 +18,7 @@ function Field({ label, errors, children }: { label: string; errors?: string[]; 
   );
 }
 
-export function EnrollForm({ currencySymbol, levels }: { currencySymbol: string; levels: string[] }) {
+export function EnrollForm({ levels }: { levels: string[] }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -66,10 +66,6 @@ export function EnrollForm({ currencySymbol, levels }: { currencySymbol: string;
       </Field>
       <Field label="Adresse" errors={fieldErrors.address}><input name="address" required maxLength={200} className={field} /></Field>
       <ParentsFields invalid={!!fieldErrors.parents} />
-
-      <Field label={`Frais d'inscription (${currencySymbol}) — facultatif`} errors={fieldErrors.enrollmentFee}>
-        <input name="enrollmentFee" type="number" min={0} step="any" defaultValue={0} className={field} />
-      </Field>
 
       {error ? <p role="alert" className="text-sm text-danger sm:col-span-2">{error}</p> : null}
       <div className="flex justify-end gap-3 sm:col-span-2">

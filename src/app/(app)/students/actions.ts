@@ -4,8 +4,6 @@ import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
-import { toMinorUnits } from "@/core/domain/finance/money";
-import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { ENROLLMENT_STATUSES } from "@/core/domain/students/student";
 import { Argon2Hasher } from "@/infrastructure/auth/argon2-hasher";
 import { secureAction } from "@/presentation/secure-action";
@@ -17,8 +15,6 @@ const createInput = z.object({
   level: text(20),
   address: text(200),
   parents: parentsSchema,
-  /** One-off enrollment fee in major units; 0 creates no invoice. Monthly billing comes from the level fee. */
-  enrollmentFee: z.coerce.number().min(0).max(100_000).default(0),
 });
 
 export type CreateStudentResult = { status: "created"; id: string; login: string; tempPassword: string };
@@ -31,7 +27,7 @@ export const createStudent = secureAction(
     input: createInput,
     resourceId: (_input, data: CreateStudentResult) => data.id,
     // No address / contact details in the audit log.
-    auditMetadata: (i) => ({ level: i.level, enrollmentFee: i.enrollmentFee, parents: i.parents.length }),
+    auditMetadata: (i) => ({ level: i.level, parents: i.parents.length }),
   },
   async ({ input, db, principal }): Promise<CreateStudentResult> => {
     const schoolId = principal.schoolId;
@@ -40,7 +36,6 @@ export const createStudent = secureAction(
     // Students sign in with a generated internal identifier; no personal e-mail is collected.
     const login = `eleve.${randomBytes(6).toString("hex")}@schoolflow.local`;
     const tempPassword = randomBytes(9).toString("base64url");
-    const feeCents = toMinorUnits(input.enrollmentFee, await getSchoolCurrency(schoolId));
 
     const user = await db.user.create({
       data: {
@@ -54,9 +49,6 @@ export const createStudent = secureAction(
           create: { schoolId, level: input.level, address: input.address, status: "ACTIVE" },
         },
         parents: { create: input.parents.map((p, position) => ({ schoolId, position, ...p })) },
-        invoices: {
-          create: feeCents > 0 ? [{ schoolId, label: "Frais d'inscription", amountCents: feeCents, dueDate: new Date(new Date().toISOString().slice(0, 10)) }] : [],
-        },
       },
       select: { id: true },
     });
