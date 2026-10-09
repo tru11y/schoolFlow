@@ -14,10 +14,14 @@ const createInput = z.object({
   lastName: text(60),
   level: text(20),
   address: text(200),
+  /** Optional school-assigned student number, unique per school. */
+  matricule: z.string().trim().max(30).optional().transform((v) => v?.toUpperCase() || undefined),
   parents: parentsSchema,
 });
 
-export type CreateStudentResult = { status: "created"; id: string; login: string; tempPassword: string };
+export type CreateStudentResult =
+  | { status: "matricule_taken" }
+  | { status: "created"; id: string; login: string; tempPassword: string };
 
 export const createStudent = secureAction(
   {
@@ -25,13 +29,17 @@ export const createStudent = secureAction(
     resource: "student",
     permission: "user:manage",
     input: createInput,
-    resourceId: (_input, data: CreateStudentResult) => data.id,
+    resourceId: (_input, data: CreateStudentResult) => (data.status === "created" ? data.id : null),
     // No address / contact details in the audit log.
     auditMetadata: (i) => ({ level: i.level, parents: i.parents.length }),
   },
   async ({ input, db, principal }): Promise<CreateStudentResult> => {
     const schoolId = principal.schoolId;
     if (!schoolId) throw new ForbiddenError("tenant:missing");
+
+    if (input.matricule && (await db.studentProfile.findFirst({ where: { matricule: input.matricule }, select: { id: true } }))) {
+      return { status: "matricule_taken" };
+    }
 
     // Students sign in with a generated internal identifier; no personal e-mail is collected.
     const login = `eleve.${randomBytes(6).toString("hex")}@schoolflow.local`;
@@ -46,7 +54,7 @@ export const createStudent = secureAction(
         passwordHash: await new Argon2Hasher().hash(tempPassword),
         schoolId,
         profile: {
-          create: { schoolId, level: input.level, address: input.address, status: "ACTIVE" },
+          create: { schoolId, level: input.level, address: input.address, matricule: input.matricule ?? null, status: "ACTIVE" },
         },
         parents: { create: input.parents.map((p, position) => ({ schoolId, position, ...p })) },
       },

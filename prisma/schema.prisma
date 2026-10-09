@@ -53,10 +53,13 @@ model StudentProfile {
   user      User             @relation("ProfileUser", fields: [userId], references: [id], onDelete: Restrict)
   level     String
   address   String
+  /// School-assigned student number; unique per school when set.
+  matricule String?
   status    EnrollmentStatus @default(ACTIVE)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
+  @@unique([schoolId, matricule])
   @@index([schoolId, level])
   @@index([schoolId, status])
   @@map("student_profiles")

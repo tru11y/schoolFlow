@@ -51,6 +51,10 @@ export function EnrollForm({ levels }: { levels: string[] }) {
             setFieldErrors(res.error.fieldErrors ?? {});
             return setError(res.error.message);
           }
+          if (res.data.status === "matricule_taken") {
+            setFieldErrors({ matricule: ["Matricule déjà utilisé"] });
+            return setError("Ce matricule est déjà attribué à un autre élève.");
+          }
           setCreated(res.data);
         })
       }
@@ -58,6 +62,7 @@ export function EnrollForm({ levels }: { levels: string[] }) {
     >
       <Field label="Prénom" errors={fieldErrors.firstName}><input name="firstName" required maxLength={60} className={field} /></Field>
       <Field label="Nom" errors={fieldErrors.lastName}><input name="lastName" required maxLength={60} className={field} /></Field>
+      <Field label="Matricule (facultatif)" errors={fieldErrors.matricule}><input name="matricule" maxLength={30} className={field} /></Field>
       <Field label="Classe" errors={fieldErrors.level}>
         <select name="level" required value={level} onChange={(e) => setLevel(e.target.value)} className={field}>
           <option value="" disabled>Choisir…</option>

@@ -109,6 +109,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
             <>
               <dl className="mb-4 grid grid-cols-2 gap-4 text-sm">
                 <Info label="Classe" value={profile.level} />
+                <Info label="Matricule" value={profile.matricule ?? "—"} />
                 <div className="col-span-2"><Info label="Adresse" value={profile.address} /></div>
               </dl>
               <ul className="mb-6 grid gap-2">
