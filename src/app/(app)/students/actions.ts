@@ -11,17 +11,24 @@ import { parentsSchema, slotSchema, text } from "./schemas";
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().transform((v) => v || undefined);
 
+const matriculeField = z.string().trim().max(30).optional().transform((v) => v?.toUpperCase() || undefined);
+const sexField = z.enum(["M", "F"]).optional().or(z.literal("").transform(() => undefined));
+
+/** Free-text address parts are stored apart; `address` keeps a joined copy for the screens that show one line. */
+const joinAddress = (p: { neighborhood?: string; commune?: string; city?: string }) =>
+  [p.neighborhood, p.commune, p.city].filter(Boolean).join(", ") || "Non renseignée";
+
 const createInput = z.object({
   firstName: text(60),
   lastName: text(60),
   level: text(20),
-  sex: z.enum(["M", "F"]).optional().or(z.literal("").transform(() => undefined)),
+  sex: sexField,
   previousSchool: optionalText(100),
   neighborhood: optionalText(80),
   commune: optionalText(80),
   city: optionalText(80),
   /** Optional school-assigned student number, unique per school. */
-  matricule: z.string().trim().max(30).optional().transform((v) => v?.toUpperCase() || undefined),
+  matricule: matriculeField,
   parents: parentsSchema,
 });
 
@@ -47,8 +54,6 @@ export const createStudent = secureAction(
       return { status: "matricule_taken" };
     }
 
-    const address = [input.neighborhood, input.commune, input.city].filter(Boolean).join(", ") || "Non renseignée";
-
     // Students sign in with a generated internal identifier; no personal e-mail is collected.
     const login = `eleve.${randomBytes(6).toString("hex")}@schoolflow.local`;
     const tempPassword = randomBytes(9).toString("base64url");
@@ -63,7 +68,7 @@ export const createStudent = secureAction(
         schoolId,
         profile: {
           create: {
-            schoolId, level: input.level, address, matricule: input.matricule ?? null, sex: input.sex ?? null,
+            schoolId, level: input.level, address: joinAddress(input), matricule: input.matricule ?? null, sex: input.sex ?? null,
             previousSchool: input.previousSchool ?? null, neighborhood: input.neighborhood ?? null,
             commune: input.commune ?? null, city: input.city ?? null, status: "ACTIVE",
           },
@@ -86,12 +91,17 @@ export const updateStudent = secureAction(
     input: z.object({
       id: z.string().uuid(),
       level: text(20),
-      address: text(200),
+      sex: sexField,
+      previousSchool: optionalText(100),
+      neighborhood: optionalText(80),
+      commune: optionalText(80),
+      city: optionalText(80),
+      matricule: matriculeField,
       status: z.enum(ENROLLMENT_STATUSES),
       parents: parentsSchema,
     }),
     resourceId: (input) => input.id,
-    auditMetadata: (i) => ({ level: i.level, status: i.status, parents: i.parents.length }),
+    auditMetadata: (i) => ({ level: i.level, status: i.status, matricule: i.matricule, parents: i.parents.length }),
   },
   async ({ input, db, principal }) => {
     const schoolId = principal.schoolId;
@@ -100,7 +110,22 @@ export const updateStudent = secureAction(
     const student = await db.user.findFirst({ where: { id: input.id, role: "STUDENT", deletedAt: null }, select: { id: true } });
     if (!student) throw new ForbiddenError("student:not-found");
 
-    const { id, parents, ...profile } = input;
+    if (input.matricule && (await db.studentProfile.findFirst({ where: { matricule: input.matricule, userId: { not: input.id } }, select: { id: true } }))) {
+      return { status: "matricule_taken" as const };
+    }
+
+    const { id, parents, ...rest } = input;
+    const profile = {
+      level: rest.level,
+      status: rest.status,
+      sex: rest.sex ?? null,
+      previousSchool: rest.previousSchool ?? null,
+      neighborhood: rest.neighborhood ?? null,
+      commune: rest.commune ?? null,
+      city: rest.city ?? null,
+      matricule: rest.matricule ?? null,
+      address: joinAddress(rest),
+    };
     await db.$transaction([
       db.studentProfile.update({ where: { userId: id }, data: profile }),
       ...parents.map((p, position) =>
@@ -115,7 +140,7 @@ export const updateStudent = secureAction(
 
     revalidatePath("/students");
     revalidatePath(`/students/${id}`);
-    return { id };
+    return { status: "updated" as const, id };
   },
 );
 

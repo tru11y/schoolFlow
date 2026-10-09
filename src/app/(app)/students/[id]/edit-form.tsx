@@ -10,7 +10,16 @@ const field =
 
 interface Props {
   id: string;
-  initial: { level: string; address: string; status: EnrollmentStatusValue };
+  initial: {
+    level: string;
+    status: EnrollmentStatusValue;
+    sex: string;
+    matricule: string;
+    previousSchool: string;
+    neighborhood: string;
+    commune: string;
+    city: string;
+  };
   parents: ParentValue[];
   levels: string[];
 }
@@ -26,11 +35,22 @@ export function EditForm({ id, initial, parents, levels }: Props) {
         start(async () => {
           const res = await updateStudent({ ...Object.fromEntries(fd), id, parents: readParents(fd) });
           setInvalid(!res.ok && !!res.error.fieldErrors?.parents);
-          setMessage(res.ok ? "Modifications enregistrées" : res.error.message);
+          if (!res.ok) return setMessage(res.error.message);
+          setMessage(res.data.status === "matricule_taken" ? "Ce matricule est déjà attribué à un autre élève." : "Modifications enregistrées");
         })
       }
       className="grid gap-3 sm:grid-cols-2"
     >
+      <label className="grid gap-1 text-sm">Sexe
+        <select name="sex" defaultValue={initial.sex} className={field}>
+          <option value="">—</option>
+          <option value="M">Masculin</option>
+          <option value="F">Féminin</option>
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm">Matricule
+        <input name="matricule" defaultValue={initial.matricule} maxLength={30} placeholder="Ex: 2024-001" className={field} />
+      </label>
       <label className="grid gap-1 text-sm">Classe
         <select name="level" defaultValue={initial.level} className={field}>
           {(levels.includes(initial.level) ? levels : [initial.level, ...levels]).map((l) => <option key={l} value={l}>{l}</option>)}
@@ -41,9 +61,21 @@ export function EditForm({ id, initial, parents, levels }: Props) {
           {ENROLLMENT_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
       </label>
-      <label className="grid gap-1 text-sm sm:col-span-2">Adresse
-        <input name="address" defaultValue={initial.address} required maxLength={200} className={field} />
+      <label className="grid gap-1 text-sm sm:col-span-2">École d&apos;origine
+        <input name="previousSchool" defaultValue={initial.previousSchool} maxLength={100} className={field} />
       </label>
+      <fieldset className="grid gap-3 sm:col-span-2 sm:grid-cols-3">
+        <legend className="mb-2 text-sm text-ink/70">Adresse</legend>
+        <label className="grid gap-1 text-sm">Quartier
+          <input name="neighborhood" defaultValue={initial.neighborhood} maxLength={80} className={field} />
+        </label>
+        <label className="grid gap-1 text-sm">Commune
+          <input name="commune" defaultValue={initial.commune} maxLength={80} className={field} />
+        </label>
+        <label className="grid gap-1 text-sm">Ville
+          <input name="city" defaultValue={initial.city} maxLength={80} className={field} />
+        </label>
+      </fieldset>
       <ParentsFields initial={parents} invalid={invalid} />
       <div className="flex items-center justify-end gap-4 sm:col-span-2">
         {message ? <p role="status" className="text-sm text-ink/80">{message}</p> : null}

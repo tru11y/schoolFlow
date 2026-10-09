@@ -134,7 +134,17 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
                   <EditForm
                     id={student.id}
                     levels={levelOptions.map((l) => l.name)}
-                    initial={{ level: profile.level, address: profile.address, status: profile.status }}
+                    initial={{
+                      level: profile.level,
+                      status: profile.status,
+                      sex: profile.sex ?? "",
+                      matricule: profile.matricule ?? "",
+                      previousSchool: profile.previousSchool ?? "",
+                      // Students created before the address split only have the one-line address: keep it editable.
+                      neighborhood: profile.neighborhood ?? (profile.commune || profile.city || profile.address === "Non renseignée" ? "" : profile.address),
+                      commune: profile.commune ?? "",
+                      city: profile.city ?? "",
+                    }}
                     parents={student.parents.map((p) => ({
                       name: p.name, relation: p.relation, phone: p.phone ?? "", email: p.email ?? "",
                     }))}
