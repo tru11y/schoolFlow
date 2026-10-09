@@ -55,6 +55,12 @@ model StudentProfile {
   address   String
   /// School-assigned student number; unique per school when set.
   matricule String?
+  /// "M" | "F"
+  sex       String?
+  previousSchool String?
+  neighborhood   String?
+  commune        String?
+  city           String?
   status    EnrollmentStatus @default(ACTIVE)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt

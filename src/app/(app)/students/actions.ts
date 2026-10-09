@@ -9,11 +9,17 @@ import { Argon2Hasher } from "@/infrastructure/auth/argon2-hasher";
 import { secureAction } from "@/presentation/secure-action";
 import { parentsSchema, slotSchema, text } from "./schemas";
 
+const optionalText = (max: number) => z.string().trim().max(max).optional().transform((v) => v || undefined);
+
 const createInput = z.object({
   firstName: text(60),
   lastName: text(60),
   level: text(20),
-  address: text(200),
+  sex: z.enum(["M", "F"]).optional().or(z.literal("").transform(() => undefined)),
+  previousSchool: optionalText(100),
+  neighborhood: optionalText(80),
+  commune: optionalText(80),
+  city: optionalText(80),
   /** Optional school-assigned student number, unique per school. */
   matricule: z.string().trim().max(30).optional().transform((v) => v?.toUpperCase() || undefined),
   parents: parentsSchema,
@@ -41,6 +47,8 @@ export const createStudent = secureAction(
       return { status: "matricule_taken" };
     }
 
+    const address = [input.neighborhood, input.commune, input.city].filter(Boolean).join(", ") || "Non renseignée";
+
     // Students sign in with a generated internal identifier; no personal e-mail is collected.
     const login = `eleve.${randomBytes(6).toString("hex")}@schoolflow.local`;
     const tempPassword = randomBytes(9).toString("base64url");
@@ -54,7 +62,11 @@ export const createStudent = secureAction(
         passwordHash: await new Argon2Hasher().hash(tempPassword),
         schoolId,
         profile: {
-          create: { schoolId, level: input.level, address: input.address, matricule: input.matricule ?? null, status: "ACTIVE" },
+          create: {
+            schoolId, level: input.level, address, matricule: input.matricule ?? null, sex: input.sex ?? null,
+            previousSchool: input.previousSchool ?? null, neighborhood: input.neighborhood ?? null,
+            commune: input.commune ?? null, city: input.city ?? null, status: "ACTIVE",
+          },
         },
         parents: { create: input.parents.map((p, position) => ({ schoolId, position, ...p })) },
       },
