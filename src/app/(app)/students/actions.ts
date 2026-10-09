@@ -6,7 +6,7 @@ import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
 import { toMinorUnits } from "@/core/domain/finance/money";
 import { getSchoolCurrency } from "@/infrastructure/db/school";
-import { ENROLLMENT_STATUSES, buildSchedule } from "@/core/domain/students/student";
+import { ENROLLMENT_STATUSES } from "@/core/domain/students/student";
 import { Argon2Hasher } from "@/infrastructure/auth/argon2-hasher";
 import { secureAction } from "@/presentation/secure-action";
 import { parentsSchema, slotSchema, text } from "./schemas";
@@ -14,18 +14,14 @@ import { parentsSchema, slotSchema, text } from "./schemas";
 const createInput = z.object({
   firstName: text(60),
   lastName: text(60),
-  email: z.string().trim().toLowerCase().email().max(254),
   level: text(20),
   address: text(200),
   parents: parentsSchema,
-  installments: z.coerce.number().int().min(1).max(12),
-  total: z.coerce.number().min(0).max(100_000),
-  firstDue: z.coerce.date(),
+  /** One-off enrollment fee in major units; 0 creates no invoice. Monthly billing comes from the level fee. */
+  enrollmentFee: z.coerce.number().min(0).max(100_000).default(0),
 });
 
-export type CreateStudentResult =
-  | { status: "created"; id: string; tempPassword: string }
-  | { status: "email_taken" };
+export type CreateStudentResult = { status: "created"; id: string; login: string; tempPassword: string };
 
 export const createStudent = secureAction(
   {
@@ -33,23 +29,22 @@ export const createStudent = secureAction(
     resource: "student",
     permission: "user:manage",
     input: createInput,
-    resourceId: (_input, data: CreateStudentResult) => (data.status === "created" ? data.id : null),
+    resourceId: (_input, data: CreateStudentResult) => data.id,
     // No address / contact details in the audit log.
-    auditMetadata: (i) => ({ email: i.email, level: i.level, installments: i.installments, parents: i.parents.length }),
+    auditMetadata: (i) => ({ level: i.level, enrollmentFee: i.enrollmentFee, parents: i.parents.length }),
   },
   async ({ input, db, principal }): Promise<CreateStudentResult> => {
     const schoolId = principal.schoolId;
     if (!schoolId) throw new ForbiddenError("tenant:missing");
 
-    if (await db.user.findFirst({ where: { email: input.email } })) return { status: "email_taken" };
-
+    // Students sign in with a generated internal identifier; no personal e-mail is collected.
+    const login = `eleve.${randomBytes(6).toString("hex")}@schoolflow.local`;
     const tempPassword = randomBytes(9).toString("base64url");
-    const totalCents = toMinorUnits(input.total, await getSchoolCurrency(schoolId));
-    const schedule = totalCents > 0 ? buildSchedule(totalCents, input.installments, input.firstDue) : [];
+    const feeCents = toMinorUnits(input.enrollmentFee, await getSchoolCurrency(schoolId));
 
     const user = await db.user.create({
       data: {
-        email: input.email,
+        email: login,
         firstName: input.firstName,
         lastName: input.lastName,
         role: "STUDENT",
@@ -60,19 +55,14 @@ export const createStudent = secureAction(
         },
         parents: { create: input.parents.map((p, position) => ({ schoolId, position, ...p })) },
         invoices: {
-          create: schedule.map((s, i) => ({
-            schoolId,
-            label: `Échéance ${i + 1}/${schedule.length} - Cours de renforcement`,
-            amountCents: s.amountCents,
-            dueDate: s.dueDate,
-          })),
+          create: feeCents > 0 ? [{ schoolId, label: "Frais d'inscription", amountCents: feeCents, dueDate: new Date(new Date().toISOString().slice(0, 10)) }] : [],
         },
       },
       select: { id: true },
     });
 
     revalidatePath("/students");
-    return { status: "created", id: user.id, tempPassword };
+    return { status: "created", id: user.id, login, tempPassword };
   },
 );
 

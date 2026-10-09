@@ -10,14 +10,13 @@ export default async function NewStudentPage() {
   const principal = await requirePagePermission("user:manage");
   const currency = await getSchoolCurrency(principal.schoolId);
   const levels = await listLevels(tenantPrisma(principal));
-  const exponent = CURRENCIES[currency].exponent;
   return (
     <>
-      <PageTitle title="Nouvelle inscription" subtitle="Fiche élève et échéancier initial" />
+      <PageTitle title="Nouvelle inscription" subtitle="Fiche élève" />
       <Card className="max-w-3xl">
         <EnrollForm
           currencySymbol={CURRENCIES[currency].symbol}
-          levels={levels.map((l) => ({ name: l.name, fee: l.monthlyFee === null ? null : l.monthlyFee / 10 ** exponent }))}
+          levels={levels.map((l) => l.name)}
         />
       </Card>
     </>
