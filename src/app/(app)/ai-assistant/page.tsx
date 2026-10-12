@@ -1,13 +1,27 @@
 import Link from "next/link";
+import { groupThreadsByAge } from "@/core/domain/copilot/threads";
+import { listThreads, loadThread } from "@/infrastructure/copilot/thread-service";
+import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { PageTitle } from "@/presentation/components/ui";
 import { Chat } from "./chat";
+import { ThreadPanel } from "./thread-panel";
 
 export const metadata = { title: "Copilote IA · SchoolFlow" };
 
-export default async function AiAssistantPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
-  await requirePagePermission("copilot:use");
-  const { q } = await searchParams;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function AiAssistantPage({ searchParams }: { searchParams: Promise<{ q?: string; thread?: string; n?: string }> }) {
+  const principal = await requirePagePermission("copilot:use");
+  const { q, thread: threadParam, n } = await searchParams;
+  const db = tenantPrisma(principal);
+
+  const [threads, active] = await Promise.all([
+    listThreads(db, principal.userId),
+    threadParam && UUID.test(threadParam) ? loadThread(db, principal.userId, threadParam) : null,
+  ]);
+  const groups = groupThreadsByAge(threads, new Date()).map((g) => ({ label: g.label, threads: g.threads.map((t) => ({ id: t.id, title: t.title })) }));
+
   return (
     <>
       <PageTitle title="Copilote IA" subtitle="Impayés, assiduité, professeurs et croissance, en langage naturel" />
@@ -23,8 +37,21 @@ export default async function AiAssistantPage({ searchParams }: { searchParams: 
       >
         🏷️ Concurrents
       </Link>
-      <div className="max-w-3xl">
-        <Chat initialQuestion={q?.slice(0, 300)} />
+      <div className="grid gap-6 md:grid-cols-[16rem_minmax(0,1fr)]">
+        <details className="rounded-3xl bg-surface/70 p-3 ring-1 ring-ink/10 md:open:block" open>
+          <summary className="cursor-pointer list-none px-2 py-1 text-sm font-semibold md:hidden">Historique</summary>
+          <div className="mt-2 md:mt-0">
+            <ThreadPanel groups={groups} activeId={active?.id ?? null} />
+          </div>
+        </details>
+        <div className="min-w-0 max-w-3xl">
+          <Chat
+            key={active?.id ?? n ?? "new"}
+            threadId={active?.id}
+            initialTurns={active?.turns}
+            initialQuestion={active ? undefined : q?.slice(0, 300)}
+          />
+        </div>
       </div>
     </>
   );

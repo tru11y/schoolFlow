@@ -4,11 +4,13 @@ import { can } from "@/core/domain/rbac/role";
 import { container } from "@/presentation/auth/container";
 import { getPrincipal } from "@/presentation/auth/guards";
 import { replyTo } from "@/infrastructure/copilot/chat-service";
+import { ownsThread, recordTurn } from "@/infrastructure/copilot/thread-service";
+import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 
 /** The model call is capped at 20 s: stay well inside this. */
 export const maxDuration = 30;
 
-const body = z.object({ question: z.string().trim().min(2).max(300) });
+const body = z.object({ question: z.string().trim().min(2).max(300), threadId: z.string().uuid().optional() });
 
 const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -41,11 +43,21 @@ export async function POST(req: Request) {
   const parsed = body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return json({ error: "Question invalide (2 à 300 caractères)." }, 400);
 
+  const db = tenantPrisma(principal);
+  const { question, threadId } = parsed.data;
+  // Checked before any model call: a foreign or deleted thread id never costs tokens and never leaks.
+  if (threadId && !(await ownsThread(db, principal.userId, threadId))) return json({ error: "Conversation introuvable." }, 404);
+
   try {
-    const reply = await replyTo(principal, parsed.data.question);
+    const reply = await replyTo(principal, question);
     // The question may name students or parents: only the detected intent is logged.
     await audit("SUCCESS", { intent: reply.intent });
-    return json(reply);
+    // History is a convenience: a storage failure must never lose the answer.
+    const savedId = await recordTurn(db, principal, threadId ?? null, question, reply).catch((err: unknown) => {
+      console.error("copilot history save failed", err instanceof Error ? err.message : "unknown");
+      return threadId;
+    });
+    return json({ ...reply, threadId: savedId });
   } catch (err) {
     console.error("copilot chat failed", err instanceof Error ? err.message : "unknown");
     await audit("FAILURE", { reason: "exception" });

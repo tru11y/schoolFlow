@@ -214,6 +214,37 @@ model AiReport {
   @@map("ai_reports")
 }
 
+/// A SUPER_ADMIN conversation with the copilot; each admin only sees their own threads. Soft-deleted.
+model CopilotThread {
+  id        String           @id @default(uuid()) @db.Uuid
+  schoolId  String           @db.Uuid
+  userId    String           @db.Uuid
+  title     String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?
+  messages  CopilotMessage[]
+
+  @@index([schoolId, userId, updatedAt])
+  @@map("copilot_threads")
+}
+
+model CopilotMessage {
+  id        String        @id @default(uuid()) @db.Uuid
+  schoolId  String        @db.Uuid
+  threadId  String        @db.Uuid
+  thread    CopilotThread @relation(fields: [threadId], references: [id], onDelete: Restrict)
+  /// "user" | "assistant"
+  role      String
+  content   String
+  /// Assistant replies only: structured items and action buttons, to re-render the answer as it was.
+  data      Json?
+  createdAt DateTime      @default(now())
+
+  @@index([threadId, createdAt])
+  @@map("copilot_messages")
+}
+
 model Course {
   id          String             @id @default(uuid()) @db.Uuid
   schoolId    String             @db.Uuid

@@ -1,11 +1,12 @@
 "use client";
 
 import { Send, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { AssistantReply } from "@/core/domain/copilot/assistant";
 import { ActionLinks } from "@/presentation/components/copilot-cards";
 
-type Turn = { question: string; reply: AssistantReply | { error: string } };
+export type Turn = { question: string; reply: AssistantReply | { error: string } };
 
 const SUGGESTIONS = [
   "Quoi faire aujourd'hui ?",
@@ -16,12 +17,21 @@ const SUGGESTIONS = [
   "Comment augmenter notre effectif en 4ème ?",
 ];
 
-export function Chat({ initialQuestion }: { initialQuestion?: string }) {
-  const [turns, setTurns] = useState<Turn[]>([]);
+export function Chat({ initialQuestion, threadId: initialThreadId, initialTurns }: { initialQuestion?: string; threadId?: string | undefined; initialTurns?: Turn[] | undefined }) {
+  const router = useRouter();
+  const [turns, setTurns] = useState<Turn[]>(initialTurns ?? []);
+  const [threadId, setThreadId] = useState<string | undefined>(initialThreadId);
   const [pending, setPending] = useState(false);
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const asked = useRef(false);
+
+  /** First answer of a new conversation creates the thread: keep its id and refresh the history panel. */
+  function adopt(id: unknown) {
+    if (typeof id !== "string" || id === threadId) return;
+    setThreadId(id);
+    router.refresh();
+  }
 
   /** Plain fetch with explicit handling: whatever happens, the turn gets an answer and the loader stops. */
   async function send(q: string): Promise<Turn["reply"]> {
@@ -29,7 +39,7 @@ export function Chat({ initialQuestion }: { initialQuestion?: string }) {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question: q }),
+        body: JSON.stringify({ question: q, threadId }),
         signal: AbortSignal.timeout(35_000),
       });
       if (res.redirected) return { error: "Session expirée. Reconnectez-vous puis réessayez." };
@@ -38,7 +48,9 @@ export function Chat({ initialQuestion }: { initialQuestion?: string }) {
         const message = (data as { error?: string } | null)?.error;
         return { error: message ?? `Le service a répondu avec une erreur (${res.status}).` };
       }
-      return data as AssistantReply;
+      const { threadId: id, ...reply } = data as AssistantReply & { threadId?: string };
+      adopt(id);
+      return reply;
     } catch {
       return { error: "Impossible de joindre l'assistant (connexion ou délai dépassé). Réessayez dans un instant." };
     }
@@ -54,10 +66,11 @@ export function Chat({ initialQuestion }: { initialQuestion?: string }) {
         const res = await fetch("/api/ai/osint", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ competitorId: competitor.id }),
+          body: JSON.stringify({ competitorId: competitor.id, threadId }),
           signal: AbortSignal.timeout(58_000),
         });
         const data: unknown = await res.json().catch(() => null);
+        if (res.ok) adopt((data as { threadId?: string } | null)?.threadId);
         reply = res.ok
           ? { intent: "ai", text: String((data as { text?: string }).text ?? ""), items: [] }
           : { error: (data as { error?: string } | null)?.error ?? `Le service a répondu avec une erreur (${res.status}).` };
@@ -84,7 +97,7 @@ export function Chat({ initialQuestion }: { initialQuestion?: string }) {
   }
 
   useEffect(() => {
-    if (initialQuestion && !asked.current) {
+    if (initialQuestion && !asked.current && !initialTurns) {
       asked.current = true;
       void ask(initialQuestion);
     }
