@@ -44,6 +44,32 @@ export function Chat({ initialQuestion }: { initialQuestion?: string }) {
     }
   }
 
+  /** Detailed web (OSINT) analysis of one competitor: appended to the conversation like any other answer. */
+  async function runOsint(competitor: { id: string; name: string }) {
+    if (pending) return;
+    setPending(true);
+    try {
+      let reply: Turn["reply"];
+      try {
+        const res = await fetch("/api/ai/osint", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ competitorId: competitor.id }),
+          signal: AbortSignal.timeout(58_000),
+        });
+        const data: unknown = await res.json().catch(() => null);
+        reply = res.ok
+          ? { intent: "ai", text: String((data as { text?: string }).text ?? ""), items: [] }
+          : { error: (data as { error?: string } | null)?.error ?? `Le service a répondu avec une erreur (${res.status}).` };
+      } catch {
+        reply = { error: "Impossible de joindre l'analyse OSINT (connexion ou délai dépassé). Réessayez dans un instant." };
+      }
+      setTurns((t) => [...t, { question: `Analyse OSINT détaillée : ${competitor.name}`, reply }]);
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function ask(question: string) {
     const q = question.trim();
     if (q.length < 2 || pending) return;
@@ -87,7 +113,7 @@ export function Chat({ initialQuestion }: { initialQuestion?: string }) {
                 <p className="text-danger">{t.reply.error}</p>
               ) : (
                 <>
-                  <p>{t.reply.text}</p>
+                  <p className="whitespace-pre-line">{t.reply.text}</p>
                   <ul className="mt-3 grid gap-2">
                     {t.reply.items.map((item, j) => (
                       <li key={j} className="rounded-2xl bg-canvas/60 p-3 ring-1 ring-ink/10">
@@ -97,6 +123,21 @@ export function Chat({ initialQuestion }: { initialQuestion?: string }) {
                       </li>
                     ))}
                   </ul>
+                  {t.reply.osint?.length ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {t.reply.osint.map((c, _i, all) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => void runOsint(c)}
+                          disabled={pending}
+                          className="min-h-10 rounded-2xl bg-accent px-4 text-sm font-medium text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95 disabled:opacity-60"
+                        >
+                          🔎 Lancer une analyse OSINT détaillée{all.length > 1 ? ` · ${c.name}` : ""}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>

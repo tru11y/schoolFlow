@@ -16,6 +16,8 @@ export interface ReplyItem {
 
 export interface AssistantReply {
   intent: Intent;
+  /** Competitors the user can launch a detailed web (OSINT) analysis on. */
+  osint?: { id: string; name: string }[];
   text: string;
   items: ReplyItem[];
 }

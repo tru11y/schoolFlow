@@ -17,7 +17,7 @@ let client: Anthropic | undefined;
  * Free-form answer grounded on the pseudonymized school snapshot.
  * Returns null on any failure or refusal so the caller can fall back to the rule-based reply.
  */
-export async function askClaude(question: string, snapshot: CopilotSnapshot): Promise<{ text: string | null; failed: boolean }> {
+export async function askClaude(question: string, snapshot: CopilotSnapshot, hint?: string): Promise<{ text: string | null; failed: boolean }> {
   // No key: the copilot is purely local, which is a normal state and not a failure.
   if (!llmEnabled()) return { text: null, failed: false };
   const { text: context, names } = buildLlmContext(snapshot);
@@ -25,9 +25,9 @@ export async function askClaude(question: string, snapshot: CopilotSnapshot): Pr
     client ??= new Anthropic({ apiKey: chatApiKey(), defaultHeaders: workspaceHeaders(), timeout: 20_000, maxRetries: 0 });
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 800,
+      max_tokens: hint ? 1100 : 800,
       system: COPILOT_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: `Données de l'établissement :\n${context}\n\nQuestion : ${question}` }],
+      messages: [{ role: "user", content: `Données de l'établissement :\n${context}\n\nQuestion : ${question}${hint ? `\n\n${hint}` : ""}` }],
     });
     if (response.stop_reason === "refusal") return { text: null, failed: false };
     const answer = response.content
