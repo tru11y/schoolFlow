@@ -8,6 +8,7 @@ import Link from "next/link";
 const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/dashboard", label: "Tableau de bord", icon: "🏠" },
   { href: "/ai-assistant", label: "Copilote IA", icon: "✨", permission: "copilot:use" },
+  { href: "/ai-assistant/competitors", label: "Concurrents / Benchmark", icon: "🏁", permission: "copilot:use" },
   { href: "/students", label: "Élèves", icon: "🎓", permission: "user:manage" },
   { href: "/compta", label: "Comptabilité", icon: "💳", permission: "finance:read" },
   { href: "/cahier-de-texte", label: "Cahier de texte", icon: "📓", permission: "homework:read" },

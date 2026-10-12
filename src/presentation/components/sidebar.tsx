@@ -12,6 +12,10 @@ export interface NavItem {
 
 export function Sidebar({ items, schoolName, hasLogo }: { items: NavItem[]; schoolName: string; hasLogo: boolean }) {
   const pathname = usePathname();
+  // Longest matching href wins, so /ai-assistant/competitors does not also light up /ai-assistant.
+  const activeHref = items
+    .filter((i) => pathname === i.href || pathname.startsWith(`${i.href}/`))
+    .sort((x, y) => y.href.length - x.href.length)[0]?.href;
   return (
     <nav
       aria-label="Navigation principale"
@@ -27,7 +31,7 @@ export function Sidebar({ items, schoolName, hasLogo }: { items: NavItem[]; scho
         <span className="min-w-0 break-words">{schoolName}</span>
       </p>
       {items.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const active = item.href === activeHref;
         return (
           <Link
             key={item.href}
