@@ -15,6 +15,7 @@ const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/curriculum", label: "Programmes", icon: "📚", permission: "homework:read" },
   { href: "/absences", label: "Absences", icon: "🙋", permission: "attendance:read" },
   { href: "/admin/users", label: "Utilisateurs", icon: "👥", permission: "user:manage" },
+  { href: "/admin/trash", label: "Corbeille", icon: "🗑️", permission: "user:manage" },
   { href: "/admin/levels", label: "Niveaux", icon: "🏷️", permission: "user:manage" },
   { href: "/admin/settings", label: "Paramètres", icon: "⚙️", permission: "school:manage" },
   { href: "/admin/audit", label: "Journal d'audit", icon: "🛡️", permission: "audit:read" },

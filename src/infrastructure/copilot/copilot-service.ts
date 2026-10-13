@@ -43,7 +43,7 @@ export async function loadSnapshot(principal: Principal, now: Date = new Date())
   const [school, invoices, weekRecords, levelRows, students] = await Promise.all([
     prisma.school.findUniqueOrThrow({ where: { id: principal.schoolId }, select: { name: true, currency: true } }),
     db.invoice.findMany({
-      where: { deletedAt: null, carriedToInvoiceId: null, status: { not: "PAID" } },
+      where: { deletedAt: null, carriedToInvoiceId: null, status: { not: "PAID" }, student: { deletedAt: null } },
       select: { studentId: true, amountCents: true, paidCents: true, dueDate: true, student: { select: studentSelect } },
     }),
     db.attendanceRecord.findMany({

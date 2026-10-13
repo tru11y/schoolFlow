@@ -12,6 +12,7 @@ import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
 import { STATUS_TONES } from "../status-tones";
+import { DeleteStudentButton } from "../delete-student";
 import { EditForm } from "./edit-form";
 import { Timetable, type SlotView } from "./timetable";
 
@@ -98,7 +99,10 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
     <>
       <Link href="/students" className="mb-4 inline-block text-sm text-ink/70 hover:text-ink">← Élèves</Link>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageTitle title={`${student.firstName} ${student.lastName}`} subtitle={student.email} />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <PageTitle title={`${student.firstName} ${student.lastName}`} subtitle={student.email} />
+          <DeleteStudentButton id={student.id} name={`${student.firstName} ${student.lastName}`} redirectTo="/students" />
+        </div>
         {profile ? <Badge tone={STATUS_TONES[profile.status]}>{STATUS_LABELS[profile.status]}</Badge> : null}
       </div>
 
@@ -135,6 +139,8 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
                     id={student.id}
                     levels={levelOptions.map((l) => l.name)}
                     initial={{
+                      firstName: student.firstName,
+                      lastName: student.lastName,
                       level: profile.level,
                       status: profile.status,
                       sex: profile.sex ?? "",

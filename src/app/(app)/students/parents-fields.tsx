@@ -28,7 +28,7 @@ export function readParents(fd: FormData): ParentValue[] {
   );
 }
 
-const RELATIONS = ["Père", "Mère", "Tuteur légal", "Oncle", "Tante", "Grand-parent"];
+const RELATIONS = ["Père", "Mère", "Tuteur", "Tuteur légal", "Oncle", "Tante", "Grand-parent"];
 
 function ParentBlock({ index, value }: { index: number; value: ParentValue }) {
   return (

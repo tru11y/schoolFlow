@@ -5,6 +5,7 @@ import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { DeleteStudentButton } from "./delete-student";
 import { STATUS_TONES } from "./status-tones";
 
 const isStatus = (v: string | undefined): v is EnrollmentStatusValue => ENROLLMENT_STATUSES.some((s) => s === v);
@@ -98,6 +99,7 @@ export default async function StudentsPage({
               <th scope="col" className="px-4 py-3 font-medium">Élève</th>
               <th scope="col" className="px-4 py-3 font-medium">Classe</th>
               <th scope="col" className="px-4 py-3 font-medium">Statut</th>
+              <th scope="col" className="px-4 py-3"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -113,10 +115,13 @@ export default async function StudentsPage({
                 <td className="px-4 py-3">
                   {s.profile ? <Badge tone={STATUS_TONES[s.profile.status]}>{STATUS_LABELS[s.profile.status]}</Badge> : "—"}
                 </td>
+                <td className="px-4 py-3 text-right">
+                  <DeleteStudentButton id={s.id} name={`${s.firstName} ${s.lastName}`} compact />
+                </td>
               </tr>
             ))}
             {students.length === 0 ? (
-              <tr><td colSpan={3} className="px-4 py-8 text-center text-ink/70">Aucun élève trouvé.</td></tr>
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-ink/70">Aucun élève trouvé.</td></tr>
             ) : null}
           </tbody>
         </table>

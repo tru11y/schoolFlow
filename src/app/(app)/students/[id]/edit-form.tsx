@@ -11,6 +11,8 @@ const field =
 interface Props {
   id: string;
   initial: {
+    firstName: string;
+    lastName: string;
     level: string;
     status: EnrollmentStatusValue;
     sex: string;
@@ -41,6 +43,12 @@ export function EditForm({ id, initial, parents, levels }: Props) {
       }
       className="grid gap-3 sm:grid-cols-2"
     >
+      <label className="grid gap-1 text-sm">Prénom
+        <input name="firstName" defaultValue={initial.firstName} required maxLength={60} className={field} />
+      </label>
+      <label className="grid gap-1 text-sm">Nom
+        <input name="lastName" defaultValue={initial.lastName} required maxLength={60} className={field} />
+      </label>
       <label className="grid gap-1 text-sm">Sexe
         <select name="sex" defaultValue={initial.sex} className={field}>
           <option value="">—</option>

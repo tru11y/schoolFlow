@@ -6,6 +6,7 @@ import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
 import { ENROLLMENT_STATUSES } from "@/core/domain/students/student";
 import { Argon2Hasher } from "@/infrastructure/auth/argon2-hasher";
+import { prisma } from "@/infrastructure/db/prisma";
 import { secureAction } from "@/presentation/secure-action";
 import { parentsSchema, slotSchema, text } from "./schemas";
 
@@ -90,6 +91,8 @@ export const updateStudent = secureAction(
     permission: "user:manage",
     input: z.object({
       id: z.string().uuid(),
+      firstName: text(60),
+      lastName: text(60),
       level: text(20),
       sex: sexField,
       previousSchool: optionalText(100),
@@ -101,7 +104,7 @@ export const updateStudent = secureAction(
       parents: parentsSchema,
     }),
     resourceId: (input) => input.id,
-    auditMetadata: (i) => ({ level: i.level, status: i.status, matricule: i.matricule, parents: i.parents.length }),
+    auditMetadata: (i) => ({ level: i.level, status: i.status, matricule: i.matricule, renamed: true, parents: i.parents.length }),
   },
   async ({ input, db, principal }) => {
     const schoolId = principal.schoolId;
@@ -114,7 +117,7 @@ export const updateStudent = secureAction(
       return { status: "matricule_taken" as const };
     }
 
-    const { id, parents, ...rest } = input;
+    const { id, parents, firstName, lastName, ...rest } = input;
     const profile = {
       level: rest.level,
       status: rest.status,
@@ -127,6 +130,7 @@ export const updateStudent = secureAction(
       address: joinAddress(rest),
     };
     await db.$transaction([
+      db.user.update({ where: { id }, data: { firstName, lastName } }),
       db.studentProfile.update({ where: { userId: id }, data: profile }),
       ...parents.map((p, position) =>
         db.parentContact.upsert({
@@ -211,5 +215,44 @@ export const deleteSlot = secureAction(
     if (count === 0) throw new ForbiddenError("slot:not-found");
     revalidatePath(`/students/${input.studentId}`);
     return { ok: true };
+  },
+);
+
+/** Soft delete: payments, invoices and attendance stay consistent; the student can be restored from the trash. */
+export const deleteStudent = secureAction(
+  {
+    name: "student.delete",
+    resource: "student",
+    permission: "user:manage",
+    input: z.object({ id: z.string().uuid() }),
+    resourceId: (i) => i.id,
+  },
+  async ({ input, db }) => {
+    const student = await db.user.findFirst({ where: { id: input.id, role: "STUDENT", deletedAt: null }, select: { id: true } });
+    if (!student) throw new ForbiddenError("student:not-found");
+
+    await db.user.update({ where: { id: student.id }, data: { deletedAt: new Date(), isActive: false } });
+    // The student can no longer sign in, even with a session opened before the deletion.
+    await prisma.session.updateMany({ where: { userId: student.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    revalidatePath("/students");
+    revalidatePath("/admin/trash");
+    return { id: student.id };
+  },
+);
+
+export const restoreStudent = secureAction(
+  {
+    name: "student.restore",
+    resource: "student",
+    permission: "user:manage",
+    input: z.object({ id: z.string().uuid() }),
+    resourceId: (i) => i.id,
+  },
+  async ({ input, db }) => {
+    const { count } = await db.user.updateMany({ where: { id: input.id, role: "STUDENT", deletedAt: { not: null } }, data: { deletedAt: null, isActive: true } });
+    if (count === 0) throw new ForbiddenError("student:not-found");
+    revalidatePath("/students");
+    revalidatePath("/admin/trash");
+    return { id: input.id };
   },
 );
