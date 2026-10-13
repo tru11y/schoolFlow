@@ -1,9 +1,9 @@
 import { can, type Permission } from "@/core/domain/rbac/role";
 import { prisma } from "@/infrastructure/db/prisma";
 import { requireAuth } from "@/presentation/auth/guards";
+import { CopilotFab } from "@/presentation/components/copilot-fab";
 import { Sidebar, type NavItem } from "@/presentation/components/sidebar";
 import { Topbar } from "@/presentation/components/topbar";
-import Link from "next/link";
 
 const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/dashboard", label: "Tableau de bord", icon: "🏠" },
@@ -39,15 +39,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           school={user?.school?.name ?? "Plateforme"}
         />
         <main className="px-6 pb-12 md:px-10">{children}</main>
-        {can(principal.role, "copilot:use") ? (
-          <Link
-            href="/ai-assistant"
-            aria-label="Ouvrir le copilote IA"
-            className="fixed bottom-5 right-5 z-20 grid size-14 place-items-center rounded-full bg-accent text-2xl text-canvas shadow-soft outline-none transition hover:scale-105 focus-visible:ring-4 focus-visible:ring-accent/40 active:scale-95"
-          >
-            <span aria-hidden>✨</span>
-          </Link>
-        ) : null}
+        {can(principal.role, "copilot:use") ? <CopilotFab /> : null}
       </div>
     </div>
   );

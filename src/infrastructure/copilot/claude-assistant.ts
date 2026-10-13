@@ -25,7 +25,7 @@ export async function askClaude(question: string, snapshot: CopilotSnapshot, hin
     client ??= new Anthropic({ apiKey: chatApiKey(), defaultHeaders: workspaceHeaders(), timeout: 20_000, maxRetries: 0 });
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: hint ? 1100 : 800,
+      max_tokens: hint ? 1500 : 800,
       system: COPILOT_SYSTEM_PROMPT,
       messages: [{ role: "user", content: `Données de l'établissement :\n${context}\n\nQuestion : ${question}${hint ? `\n\n${hint}` : ""}` }],
     });

@@ -37,14 +37,18 @@ export default async function AiAssistantPage({ searchParams }: { searchParams: 
       >
         🏷️ Concurrents
       </Link>
-      <div className="grid gap-6 md:grid-cols-[16rem_minmax(0,1fr)]">
-        <details className="rounded-3xl bg-surface/70 p-3 ring-1 ring-ink/10 md:open:block" open>
-          <summary className="cursor-pointer list-none px-2 py-1 text-sm font-semibold md:hidden">Historique</summary>
-          <div className="mt-2 md:mt-0">
+      {/* Two columns from md up: fixed-width history on the left, the chat takes the remaining width. Stacked on mobile. */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
+        <details className="rounded-3xl bg-surface/70 p-3 ring-1 ring-ink/10 md:hidden">
+          <summary className="cursor-pointer list-none px-2 py-1 text-sm font-semibold">Historique des conversations</summary>
+          <div className="mt-3">
             <ThreadPanel groups={groups} activeId={active?.id ?? null} />
           </div>
         </details>
-        <div className="min-w-0 max-w-3xl">
+        <aside className="hidden w-64 shrink-0 rounded-3xl bg-surface/70 p-3 ring-1 ring-ink/10 md:block lg:w-72">
+          <ThreadPanel groups={groups} activeId={active?.id ?? null} />
+        </aside>
+        <div className="mx-auto w-full min-w-0 max-w-3xl flex-1">
           <Chat
             key={active?.id ?? n ?? "new"}
             threadId={active?.id}
