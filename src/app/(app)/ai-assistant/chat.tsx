@@ -1,6 +1,6 @@
 "use client";
 
-import { Send, Sparkles } from "lucide-react";
+import { Bot, Send, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { AssistantReply } from "@/core/domain/copilot/assistant";
@@ -17,7 +17,7 @@ const SUGGESTIONS = [
   "Comment augmenter notre effectif en 4ème ?",
 ];
 
-export function Chat({ initialQuestion, threadId: initialThreadId, initialTurns }: { initialQuestion?: string; threadId?: string | undefined; initialTurns?: Turn[] | undefined }) {
+export function Chat({ initialQuestion, threadId: initialThreadId, initialTurns, initials = "" }: { initialQuestion?: string; threadId?: string | undefined; initialTurns?: Turn[] | undefined; initials?: string }) {
   const router = useRouter();
   const [turns, setTurns] = useState<Turn[]>(initialTurns ?? []);
   const [threadId, setThreadId] = useState<string | undefined>(initialThreadId);
@@ -109,84 +109,106 @@ export function Chat({ initialQuestion, threadId: initialThreadId, initialTurns 
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [turns, pending]);
 
+  const botAvatar = (
+    <div aria-hidden className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent ring-1 ring-accent/25">
+      <Sparkles className="size-4" />
+    </div>
+  );
+
   return (
     <section aria-label="Copilote SchoolFlow" className="flex h-full min-h-[32rem] w-full flex-col overflow-hidden rounded-3xl bg-surface shadow-soft ring-1 ring-ink/10">
-      <header className="flex shrink-0 items-center gap-2 border-b border-ink/10 px-5 py-3">
-        <Sparkles className="size-5 text-accent" aria-hidden />
-        <h2 className="font-semibold">Copilote SchoolFlow</h2>
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-ink/10 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div aria-hidden className="grid size-8 shrink-0 place-items-center rounded-lg bg-accent/15 text-accent"><Bot className="size-4" /></div>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold">Copilote SchoolFlow</h2>
+            <p className="truncate text-xs text-ink/70">Impayés, assiduité, enseignants, concurrence et croissance de l&apos;effectif.</p>
+          </div>
+        </div>
+        <span className="hidden shrink-0 rounded-md bg-mint/10 px-2 py-0.5 text-[11px] font-medium text-mint ring-1 ring-mint/25 sm:inline">Réservé au SuperAdmin</span>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-        <div className="grid gap-5" aria-live="polite">
-          {turns.length === 0 && !pending ? (
-            <p className="text-sm text-ink/70">Posez une question sur les impayés, l&apos;assiduité, les professeurs, la concurrence ou la croissance de l&apos;effectif.</p>
-          ) : null}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <div className="grid gap-4" aria-live="polite">
+          <div className="flex items-start gap-3">
+            {botAvatar}
+            <p className="max-w-2xl rounded-2xl rounded-tl-none bg-canvas/60 p-3.5 text-sm leading-relaxed ring-1 ring-ink/10">
+              Bonjour ! Je peux analyser les impayés, suivre l&apos;assiduité, comparer vos tarifs à ceux des concurrents et préparer des relances WhatsApp ou SMS.
+            </p>
+          </div>
           {turns.map((t, i) => (
             <div key={i} className="grid gap-3">
-              <p className="ml-auto max-w-[85%] rounded-3xl rounded-br-lg bg-accent px-4 py-2.5 text-canvas">{t.question}</p>
-              <div className="max-w-full rounded-3xl rounded-bl-lg bg-canvas/60 p-5 ring-1 ring-ink/10">
-                {"error" in t.reply ? (
-                  <p className="text-danger">{t.reply.error}</p>
-                ) : (
-                  <>
-                    <p className="whitespace-pre-line">{t.reply.text}</p>
-                    <ul className="mt-3 grid gap-2">
-                      {t.reply.items.map((item, j) => (
-                        <li key={j} className="rounded-2xl bg-surface p-3 ring-1 ring-ink/10">
-                          <p className="text-sm font-medium">{item.title}</p>
-                          {item.detail ? <p className="text-sm text-ink/70">{item.detail}</p> : null}
-                          <ActionLinks links={item.links} />
-                        </li>
-                      ))}
-                    </ul>
-                    {t.reply.osint?.length ? (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {t.reply.osint.map((c, _i, all) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => void runOsint(c)}
-                            disabled={pending}
-                            className="min-h-10 rounded-2xl bg-accent px-4 text-sm font-medium text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95 disabled:opacity-60"
-                          >
-                            🔎 Lancer une analyse OSINT détaillée{all.length > 1 ? ` · ${c.name}` : ""}
-                          </button>
+              <div className="flex items-start justify-end gap-3">
+                <p className="max-w-[85%] rounded-2xl rounded-tr-none bg-accent p-3.5 text-sm text-canvas">{t.question}</p>
+                <div aria-hidden className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-lilac text-xs font-bold text-canvas">{initials || "·"}</div>
+              </div>
+              <div className="flex items-start gap-3">
+                {botAvatar}
+                <div className="min-w-0 max-w-full flex-1 rounded-2xl rounded-tl-none bg-canvas/60 p-4 ring-1 ring-ink/10">
+                  {"error" in t.reply ? (
+                    <p className="text-sm text-danger">{t.reply.error}</p>
+                  ) : (
+                    <>
+                      <p className="whitespace-pre-line text-sm leading-relaxed">{t.reply.text}</p>
+                      <ul className="mt-3 grid gap-2">
+                        {t.reply.items.map((item, j) => (
+                          <li key={j} className="rounded-xl bg-surface p-3 ring-1 ring-ink/10">
+                            <p className="text-sm font-medium">{item.title}</p>
+                            {item.detail ? <p className="text-sm text-ink/70">{item.detail}</p> : null}
+                            <ActionLinks links={item.links} />
+                          </li>
                         ))}
-                      </div>
-                    ) : null}
-                  </>
-                )}
+                      </ul>
+                      {t.reply.osint?.length ? (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {t.reply.osint.map((c, _i, all) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => void runOsint(c)}
+                              disabled={pending}
+                              className="min-h-9 rounded-lg bg-accent/15 px-3 text-xs font-medium text-accent outline-none ring-1 ring-accent/30 transition hover:bg-accent/25 focus-visible:ring-2 active:scale-95 disabled:opacity-60"
+                            >
+                              🔎 Lancer une analyse OSINT détaillée{all.length > 1 ? ` · ${c.name}` : ""}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))}
-          {pending ? <p className="text-sm text-ink/70" role="status">Analyse en cours…</p> : null}
-
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTIONS.map((s) => (
-              <button key={s} type="button" onClick={() => void ask(s)} disabled={pending} className="rounded-full bg-canvas/60 px-3 py-1.5 text-xs ring-1 ring-ink/15 transition hover:bg-raised active:scale-95 disabled:opacity-60">
-                {s}
-              </button>
-            ))}
-          </div>
+          {pending ? <p className="pl-11 text-sm text-ink/70" role="status">Analyse en cours…</p> : null}
           <div ref={endRef} />
         </div>
       </div>
 
-      <form
-        onSubmit={(e) => { e.preventDefault(); void ask(draft); }}
-        className="flex shrink-0 items-center gap-2 border-t border-ink/10 bg-surface p-3"
-      >
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          maxLength={300}
-          placeholder="Posez votre question…"
-          aria-label="Votre question"
-          className="h-11 min-w-0 flex-1 rounded-2xl bg-canvas/70 px-4 outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent"
-        />
-        <button disabled={pending || draft.trim().length < 2} aria-label="Envoyer" className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent text-canvas transition active:scale-95 disabled:opacity-50">
-          <Send className="size-5" aria-hidden />
-        </button>
+      <div className="shrink-0 overflow-x-auto border-t border-ink/10 bg-canvas/30 px-4 py-2" aria-label="Suggestions">
+        <div className="flex w-max items-center gap-2">
+          {SUGGESTIONS.map((s) => (
+            <button key={s} type="button" onClick={() => setDraft(s)} disabled={pending} className="whitespace-nowrap rounded-full bg-surface px-3 py-1 text-[11px] ring-1 ring-ink/15 transition hover:bg-raised active:scale-95 disabled:opacity-60">
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <form onSubmit={(e) => { e.preventDefault(); void ask(draft); }} className="shrink-0 border-t border-ink/10 bg-surface p-3">
+        <div className="relative flex items-center">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            maxLength={300}
+            placeholder="Posez votre question sur les impayés, la concurrence ou la croissance…"
+            aria-label="Votre question"
+            className="h-12 w-full rounded-xl bg-canvas/70 pl-4 pr-14 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent"
+          />
+          <button disabled={pending || draft.trim().length < 2} aria-label="Envoyer" className="absolute right-2 grid size-9 place-items-center rounded-lg bg-accent text-canvas transition active:scale-95 disabled:opacity-50">
+            <Send className="size-4" aria-hidden />
+          </button>
+        </div>
       </form>
     </section>
   );

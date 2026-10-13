@@ -14,13 +14,14 @@ export interface StoredTurn {
 const LIST_LIMIT = 100;
 
 /** The principal's own live threads, newest first. Every query below also filters on `userId`: no cross-user access. */
-export async function listThreads(db: Db, userId: string): Promise<ThreadSummary[]> {
-  return db.copilotThread.findMany({
+export async function listThreads(db: Db, userId: string): Promise<(ThreadSummary & { messageCount: number })[]> {
+  const rows = await db.copilotThread.findMany({
     where: { userId, deletedAt: null },
     orderBy: { updatedAt: "desc" },
     take: LIST_LIMIT,
-    select: { id: true, title: true, updatedAt: true },
+    select: { id: true, title: true, updatedAt: true, _count: { select: { messages: true } } },
   });
+  return rows.map(({ _count, ...t }) => ({ ...t, messageCount: _count.messages }));
 }
 
 export async function ownsThread(db: Db, userId: string, id: string): Promise<boolean> {

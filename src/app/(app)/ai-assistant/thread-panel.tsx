@@ -8,7 +8,7 @@ import { deleteThread, renameThread } from "./thread-actions";
 
 export interface ThreadGroup {
   label: string;
-  threads: { id: string; title: string }[];
+  threads: { id: string; title: string; meta: string }[];
 }
 
 export function ThreadPanel({ groups, activeId }: { groups: ThreadGroup[]; activeId: string | null }) {
@@ -58,14 +58,15 @@ export function ThreadPanel({ groups, activeId }: { groups: ThreadGroup[]; activ
                 <Link
                   href={`/ai-assistant?thread=${t.id}`}
                   aria-current={t.id === activeId ? "page" : undefined}
-                  className="min-w-0 flex-1 truncate rounded-xl px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="min-w-0 flex-1 rounded-xl px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  {t.title}
+                  <span className="block truncate text-sm font-medium">{t.title}</span>
+                  <span className="block truncate text-[11px] text-ink/60">{t.meta}</span>
                 </Link>
-                <button type="button" disabled={pending} onClick={() => rename(t.id, t.title)} aria-label={`Renommer « ${t.title} »`} className="grid size-8 shrink-0 place-items-center rounded-lg text-ink/60 outline-none hover:bg-surface hover:text-ink focus-visible:ring-2 focus-visible:ring-accent">
+                <button type="button" disabled={pending} onClick={() => rename(t.id, t.title)} aria-label={`Renommer « ${t.title} »`} className="grid size-8 shrink-0 md:opacity-0 md:transition md:group-focus-within:opacity-100 md:group-hover:opacity-100 place-items-center rounded-lg text-ink/60 outline-none hover:bg-surface hover:text-ink focus-visible:ring-2 focus-visible:ring-accent">
                   <Pencil className="size-4" aria-hidden />
                 </button>
-                <button type="button" disabled={pending} onClick={() => remove(t.id, t.title)} aria-label={`Supprimer « ${t.title} »`} className="mr-1 grid size-8 shrink-0 place-items-center rounded-lg text-danger/80 outline-none hover:bg-surface hover:text-danger focus-visible:ring-2 focus-visible:ring-accent">
+                <button type="button" disabled={pending} onClick={() => remove(t.id, t.title)} aria-label={`Supprimer « ${t.title} »`} className="mr-1 grid size-8 shrink-0 md:opacity-0 md:transition md:group-focus-within:opacity-100 md:group-hover:opacity-100 place-items-center rounded-lg text-danger/80 outline-none hover:bg-surface hover:text-danger focus-visible:ring-2 focus-visible:ring-accent">
                   <Trash2 className="size-4" aria-hidden />
                 </button>
               </li>
