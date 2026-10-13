@@ -106,71 +106,75 @@ export function Chat({ initialQuestion, threadId: initialThreadId, initialTurns 
 
   useEffect(() => {
     // Block body on purpose: an effect must return nothing or a cleanup function, never scrollIntoView's result.
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [turns, pending]);
 
   return (
-    <div className="grid gap-4">
-      <div className="grid gap-5" aria-live="polite">
-        {turns.length === 0 && !pending ? (
-          <div className="rounded-3xl bg-surface p-6 shadow-soft">
-            <p className="flex items-center gap-2 font-medium"><Sparkles className="size-5 text-accent" aria-hidden />Copilote SchoolFlow</p>
-            <p className="mt-2 text-sm text-ink/70">Posez une question sur les impayés, l&apos;assiduité, les professeurs ou la croissance de l&apos;effectif.</p>
-          </div>
-        ) : null}
-        {turns.map((t, i) => (
-          <div key={i} className="grid gap-3">
-            <p className="ml-auto max-w-[85%] rounded-3xl rounded-br-lg bg-accent px-4 py-2.5 text-canvas">{t.question}</p>
-            <div className="max-w-full rounded-3xl rounded-bl-lg bg-surface p-5 shadow-soft">
-              {"error" in t.reply ? (
-                <p className="text-danger">{t.reply.error}</p>
-              ) : (
-                <>
-                  <p className="whitespace-pre-line">{t.reply.text}</p>
-                  <ul className="mt-3 grid gap-2">
-                    {t.reply.items.map((item, j) => (
-                      <li key={j} className="rounded-2xl bg-canvas/60 p-3 ring-1 ring-ink/10">
-                        <p className="text-sm font-medium">{item.title}</p>
-                        {item.detail ? <p className="text-sm text-ink/70">{item.detail}</p> : null}
-                        <ActionLinks links={item.links} />
-                      </li>
-                    ))}
-                  </ul>
-                  {t.reply.osint?.length ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {t.reply.osint.map((c, _i, all) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => void runOsint(c)}
-                          disabled={pending}
-                          className="min-h-10 rounded-2xl bg-accent px-4 text-sm font-medium text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95 disabled:opacity-60"
-                        >
-                          🔎 Lancer une analyse OSINT détaillée{all.length > 1 ? ` · ${c.name}` : ""}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </div>
-          </div>
-        ))}
-        {pending ? <p className="text-sm text-ink/70" role="status">Analyse en cours…</p> : null}
-        <div ref={endRef} />
-      </div>
+    <section aria-label="Copilote SchoolFlow" className="flex h-full min-h-[32rem] w-full flex-col overflow-hidden rounded-3xl bg-surface shadow-soft ring-1 ring-ink/10">
+      <header className="flex shrink-0 items-center gap-2 border-b border-ink/10 px-5 py-3">
+        <Sparkles className="size-5 text-accent" aria-hidden />
+        <h2 className="font-semibold">Copilote SchoolFlow</h2>
+      </header>
 
-      <div className="flex flex-wrap gap-2">
-        {SUGGESTIONS.map((s) => (
-          <button key={s} type="button" onClick={() => void ask(s)} disabled={pending} className="rounded-full bg-surface px-3 py-1.5 text-xs ring-1 ring-ink/15 transition hover:bg-raised active:scale-95 disabled:opacity-60">
-            {s}
-          </button>
-        ))}
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+        <div className="grid gap-5" aria-live="polite">
+          {turns.length === 0 && !pending ? (
+            <p className="text-sm text-ink/70">Posez une question sur les impayés, l&apos;assiduité, les professeurs, la concurrence ou la croissance de l&apos;effectif.</p>
+          ) : null}
+          {turns.map((t, i) => (
+            <div key={i} className="grid gap-3">
+              <p className="ml-auto max-w-[85%] rounded-3xl rounded-br-lg bg-accent px-4 py-2.5 text-canvas">{t.question}</p>
+              <div className="max-w-full rounded-3xl rounded-bl-lg bg-canvas/60 p-5 ring-1 ring-ink/10">
+                {"error" in t.reply ? (
+                  <p className="text-danger">{t.reply.error}</p>
+                ) : (
+                  <>
+                    <p className="whitespace-pre-line">{t.reply.text}</p>
+                    <ul className="mt-3 grid gap-2">
+                      {t.reply.items.map((item, j) => (
+                        <li key={j} className="rounded-2xl bg-surface p-3 ring-1 ring-ink/10">
+                          <p className="text-sm font-medium">{item.title}</p>
+                          {item.detail ? <p className="text-sm text-ink/70">{item.detail}</p> : null}
+                          <ActionLinks links={item.links} />
+                        </li>
+                      ))}
+                    </ul>
+                    {t.reply.osint?.length ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {t.reply.osint.map((c, _i, all) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => void runOsint(c)}
+                            disabled={pending}
+                            className="min-h-10 rounded-2xl bg-accent px-4 text-sm font-medium text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95 disabled:opacity-60"
+                          >
+                            🔎 Lancer une analyse OSINT détaillée{all.length > 1 ? ` · ${c.name}` : ""}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+          {pending ? <p className="text-sm text-ink/70" role="status">Analyse en cours…</p> : null}
+
+          <div className="flex flex-wrap gap-2">
+            {SUGGESTIONS.map((s) => (
+              <button key={s} type="button" onClick={() => void ask(s)} disabled={pending} className="rounded-full bg-canvas/60 px-3 py-1.5 text-xs ring-1 ring-ink/15 transition hover:bg-raised active:scale-95 disabled:opacity-60">
+                {s}
+              </button>
+            ))}
+          </div>
+          <div ref={endRef} />
+        </div>
       </div>
 
       <form
         onSubmit={(e) => { e.preventDefault(); void ask(draft); }}
-        className="sticky bottom-4 flex items-center gap-2 rounded-3xl bg-surface p-2 shadow-soft ring-1 ring-ink/15"
+        className="flex shrink-0 items-center gap-2 border-t border-ink/10 bg-surface p-3"
       >
         <input
           value={draft}
@@ -178,12 +182,12 @@ export function Chat({ initialQuestion, threadId: initialThreadId, initialTurns 
           maxLength={300}
           placeholder="Posez votre question…"
           aria-label="Votre question"
-          className="h-11 min-w-0 flex-1 bg-transparent px-3 outline-none"
+          className="h-11 min-w-0 flex-1 rounded-2xl bg-canvas/70 px-4 outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent"
         />
-        <button disabled={pending || draft.trim().length < 2} aria-label="Envoyer" className="grid size-11 place-items-center rounded-2xl bg-accent text-canvas transition active:scale-95 disabled:opacity-50">
+        <button disabled={pending || draft.trim().length < 2} aria-label="Envoyer" className="grid size-11 shrink-0 place-items-center rounded-2xl bg-accent text-canvas transition active:scale-95 disabled:opacity-50">
           <Send className="size-5" aria-hidden />
         </button>
       </form>
-    </div>
+    </section>
   );
 }

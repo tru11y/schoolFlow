@@ -37,18 +37,18 @@ export default async function AiAssistantPage({ searchParams }: { searchParams: 
       >
         🏷️ Concurrents
       </Link>
-      {/* Two columns from md up: fixed-width history on the left, the chat takes the remaining width. Stacked on mobile. */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-6">
-        <details className="rounded-3xl bg-surface/70 p-3 ring-1 ring-ink/10 md:hidden">
+      {/* Side by side from md up (history 18 rem, chat fills the rest); stacked on mobile. Both panels scroll inside a bounded height. */}
+      <div className="flex w-full flex-col items-stretch gap-6 md:h-[calc(100dvh-15rem)] md:min-h-[34rem] md:flex-row md:items-start md:overflow-hidden">
+        <details className="w-full rounded-3xl bg-surface p-3 ring-1 ring-ink/10 md:hidden">
           <summary className="cursor-pointer list-none px-2 py-1 text-sm font-semibold">Historique des conversations</summary>
-          <div className="mt-3">
+          <div className="mt-3 max-h-72 overflow-y-auto">
             <ThreadPanel groups={groups} activeId={active?.id ?? null} />
           </div>
         </details>
-        <aside className="hidden w-64 shrink-0 rounded-3xl bg-surface/70 p-3 ring-1 ring-ink/10 md:block lg:w-72">
+        <aside className="hidden h-full w-72 shrink-0 flex-col rounded-3xl bg-surface p-4 ring-1 ring-ink/10 md:flex">
           <ThreadPanel groups={groups} activeId={active?.id ?? null} />
         </aside>
-        <div className="mx-auto w-full min-w-0 max-w-3xl flex-1">
+        <div className="h-[75dvh] min-h-0 w-full min-w-0 flex-1 md:h-full">
           <Chat
             key={active?.id ?? n ?? "new"}
             threadId={active?.id}

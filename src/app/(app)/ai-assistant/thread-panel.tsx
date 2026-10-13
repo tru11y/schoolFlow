@@ -38,15 +38,16 @@ export function ThreadPanel({ groups, activeId }: { groups: ThreadGroup[]; activ
   };
 
   return (
-    <nav aria-label="Historique des conversations" className="grid content-start gap-4">
+    <nav aria-label="Historique des conversations" className="flex h-full min-h-0 flex-col gap-4">
       <button
         type="button"
         onClick={() => router.push(`/ai-assistant?n=${Date.now()}`)}
-        className="flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-sm font-semibold text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95"
+        className="flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-accent px-4 text-sm font-semibold text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95"
       >
         <Plus className="size-4" aria-hidden />Nouvelle conversation
       </button>
 
+      <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto">
       {groups.length === 0 ? <p className="px-1 text-sm text-ink/70">Aucune conversation pour le moment.</p> : null}
       {groups.map((g) => (
         <section key={g.label} aria-label={g.label} className="grid gap-1">
@@ -72,7 +73,8 @@ export function ThreadPanel({ groups, activeId }: { groups: ThreadGroup[]; activ
           </ul>
         </section>
       ))}
-      {error ? <p role="alert" className="px-1 text-sm text-danger">{error}</p> : null}
+      </div>
+      {error ? <p role="alert" className="shrink-0 px-1 text-sm text-danger">{error}</p> : null}
     </nav>
   );
 }
