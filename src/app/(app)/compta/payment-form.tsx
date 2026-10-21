@@ -9,6 +9,7 @@ const METHODS = [
   { value: "CASH", label: "Espèces" },
   { value: "MOBILE_MONEY", label: "Mobile Money" },
   { value: "TRANSFER", label: "Virement" },
+  { value: "CHEQUE", label: "Chèque" },
 ] as const;
 
 const field =
@@ -99,6 +100,9 @@ export function PaymentForm({ students, currency, defaultDescription, preselect,
       </div>
       <label className="grid gap-1 text-sm">Description
         <input name="description" required maxLength={160} defaultValue={defaultDescription} className={field} />
+      </label>
+      <label className="grid gap-1 text-sm">Référence du reçu (optionnel)
+        <input name="reference" maxLength={80} className={field} />
       </label>
 
       {message ? (

@@ -6,6 +6,8 @@ export const PERMISSIONS = [
   "user:manage",
   "finance:read",
   "finance:write",
+  /** Edit or cancel a recorded payment. SUPER_ADMIN and SCHOOL_ADMIN only. */
+  "payment:manage",
   "receipt:issue",
   "attendance:read",
   "attendance:write",
@@ -21,7 +23,7 @@ export type Permission = (typeof PERMISSIONS)[number];
 const ROLE_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   SUPER_ADMIN: new Set(PERMISSIONS),
   SCHOOL_ADMIN: new Set<Permission>([
-    "user:manage", "finance:read", "attendance:read", "attendance:write",
+    "user:manage", "finance:read", "payment:manage", "attendance:read", "attendance:write",
     "homework:read", "homework:write", "chat:use", "audit:read",
   ]),
   ACCOUNTANT: new Set<Permission>(["finance:read", "finance:write", "receipt:issue", "chat:use"]),

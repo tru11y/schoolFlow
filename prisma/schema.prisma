@@ -284,6 +284,7 @@ enum PaymentMethod {
   CASH
   MOBILE_MONEY
   TRANSFER
+  CHEQUE
 }
 
 enum AttendanceStatus {
@@ -336,7 +337,14 @@ model Payment {
   receiptHash  String        @unique @db.Char(64)
   /// [{ invoiceId, amountCents }]
   allocations  Json
+  /// Free receipt/bank reference typed by the cashier.
+  reference    String?
   createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now()) @updatedAt
+  /// Soft delete: the row stays for the audit trail but no longer counts anywhere.
+  deletedAt    DateTime?
+  deletedById  String?       @db.Uuid
+  deleteReason String?
 
   @@index([schoolId, paidAt])
   @@index([studentId])

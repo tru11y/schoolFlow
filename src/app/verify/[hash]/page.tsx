@@ -17,6 +17,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ hash: s
   // Recompute from the stored facts: a tampered row would no longer match its hash.
   const authentic =
     !!payment &&
+    payment.deletedAt === null &&
     receiptHash({
       paymentId: payment.id,
       schoolId: payment.schoolId,

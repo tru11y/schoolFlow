@@ -4,8 +4,9 @@ import { z } from "zod";
 import { can } from "@/core/domain/rbac/role";
 import { localParts } from "@/core/domain/attendance/policy";
 import { effectiveStatus } from "@/core/domain/finance/billing";
-import { formatMoney } from "@/core/domain/finance/money";
+import { CURRENCIES, formatMoney } from "@/core/domain/finance/money";
 import { getSchoolCurrency } from "@/infrastructure/db/school";
+import { PaymentRowActions } from "../../compta/payment-row-actions";
 import { STATUS_LABELS, WEEKDAYS } from "@/core/domain/students/student";
 import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
@@ -52,7 +53,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
       attendances: { orderBy: { date: "desc" }, take: 30 },
       enrollments: { include: { course: true } },
       invoices: showFinance ? { where: { deletedAt: null }, orderBy: { dueDate: "asc" } } : false,
-      payments: { orderBy: { paidAt: "desc" }, take: 10 },
+      payments: { where: { deletedAt: null }, orderBy: { paidAt: "desc" }, take: 10 },
     },
   });
   if (!student) notFound();
@@ -238,9 +239,25 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
                   {student.payments.map((p) => (
                     <li key={p.id} className="flex items-center justify-between gap-2 rounded-2xl bg-canvas px-4 py-2.5 text-sm">
                       <span>{p.paidAt.toLocaleDateString("fr-FR")} · {formatMoney(p.amountCents, currency)}</span>
-                      <a href={`/compta/receipt/${p.id}`} className="rounded-2xl bg-sky/15 px-3 py-1.5 text-sky outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                        Reçu PDF
-                      </a>
+                      <span className="flex items-center gap-1">
+                        <a href={`/compta/receipt/${p.id}`} className="rounded-2xl bg-sky/15 px-3 py-1.5 text-sky outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                          Reçu PDF
+                        </a>
+                        {can(principal.role, "payment:manage") ? (
+                          <PaymentRowActions
+                            currency={CURRENCIES[currency].symbol}
+                            exponent={CURRENCIES[currency].exponent}
+                            payment={{
+                              id: p.id,
+                              amount: p.amountCents / 10 ** CURRENCIES[currency].exponent,
+                              method: p.method,
+                              description: p.description,
+                              paidAt: p.paidAt.toISOString().slice(0, 10),
+                              reference: p.reference,
+                            }}
+                          />
+                        ) : null}
+                      </span>
                     </li>
                   ))}
                 </ul>

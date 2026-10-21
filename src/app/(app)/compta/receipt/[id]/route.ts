@@ -9,7 +9,7 @@ import { buildReceiptPdf } from "@/infrastructure/pdf/receipt-pdf";
 import { container } from "@/presentation/auth/container";
 import { requirePermission } from "@/presentation/auth/guards";
 
-const METHOD_LABELS = { CASH: "Especes", MOBILE_MONEY: "Mobile Money", TRANSFER: "Virement" } as const;
+const METHOD_LABELS = { CASH: "Especes", MOBILE_MONEY: "Mobile Money", TRANSFER: "Virement", CHEQUE: "Cheque" } as const;
 
 /** `id` is a payment id. */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -25,7 +25,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const payment = await tenantPrisma(principal).payment.findFirst({
-    where: { id: id.data },
+    where: { id: id.data, deletedAt: null },
     include: { student: { select: { firstName: true, lastName: true } } },
   });
   if (!payment) return new Response("Not found", { status: 404 });
@@ -39,7 +39,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     amount: formatMoney(payment.amountCents, school?.currency ?? "EUR", "code"),
     method: METHOD_LABELS[payment.method],
     paidAt: payment.paidAt,
-    reference: payment.id,
+    reference: payment.reference ?? payment.id,
     hash: payment.receiptHash,
     verifyUrl: `${env().APP_URL}/verify/${payment.receiptHash}`,
   });

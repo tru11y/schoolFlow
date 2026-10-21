@@ -14,6 +14,14 @@ describe("rbac", () => {
     }
   });
 
+  it("reserves payment edit/delete to SUPER_ADMIN and SCHOOL_ADMIN", () => {
+    expect(can("SUPER_ADMIN", "payment:manage")).toBe(true);
+    expect(can("SCHOOL_ADMIN", "payment:manage")).toBe(true);
+    for (const role of ["ACCOUNTANT", "TEACHER", "STUDENT", "PARENT"] as const) {
+      expect(can(role, "payment:manage")).toBe(false);
+    }
+  });
+
   it("restricts chat peers", () => {
     expect(canChat("STUDENT", "PARENT")).toBe(false);
     expect(canChat("STUDENT", "TEACHER")).toBe(true);

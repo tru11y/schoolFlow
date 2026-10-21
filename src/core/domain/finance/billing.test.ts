@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allocatePayment, effectiveStatus, periodDueDate, periodLabel, planMonthlyInvoice, remaining } from "./billing";
+import { allocatePayment, applyAllocations, effectiveStatus, openInvoicesOf, reverseAllocations, periodDueDate, periodLabel, planMonthlyInvoice, remaining } from "./billing";
 
 const d = (iso: string) => new Date(`${iso}T00:00:00Z`);
 
@@ -48,5 +48,37 @@ describe("periods", () => {
     expect(periodLabel("2026-10")).toBe("Octobre 2026");
     expect(periodDueDate("2026-10").toISOString().slice(0, 10)).toBe("2026-10-10");
     expect(remaining({ amountCents: 5, paidCents: 9 })).toBe(0);
+  });
+});
+
+describe("payment reversal", () => {
+  const inv = (id: string, amountCents: number, paidCents: number, carriedToInvoiceId: string | null = null) => ({
+    id, amountCents, paidCents, carriedOverCents: 0, carriedToInvoiceId, dueDate: d("2026-10-10"),
+  });
+
+  it("gives the paid amount back to the invoice", () => {
+    const out = reverseAllocations([inv("a", 25000, 25000)], [{ invoiceId: "a", amountCents: 25000 }]);
+    expect(out[0]).toMatchObject({ paidCents: 0, amountCents: 25000 });
+    expect(remaining(out[0]!)).toBe(25000);
+  });
+
+  it("restores the debt on the newer invoice when the paid one was carried over", () => {
+    const out = reverseAllocations(
+      [inv("sep", 25000, 15000, "oct"), inv("oct", 35000, 0)],
+      [{ invoiceId: "sep", amountCents: 15000 }],
+    );
+    expect(out.find((i) => i.id === "sep")?.paidCents).toBe(0);
+    expect(out.find((i) => i.id === "oct")).toMatchObject({ amountCents: 50000, carriedOverCents: 15000 });
+  });
+
+  it("edit = reverse then reallocate on open invoices only", () => {
+    const reversed = reverseAllocations(
+      [inv("sep", 25000, 25000, "oct"), inv("oct", 25000, 0)],
+      [{ invoiceId: "sep", amountCents: 25000 }],
+    );
+    const { allocations, leftoverCents } = allocatePayment(openInvoicesOf(reversed), 10000);
+    expect(allocations).toEqual([{ invoiceId: "oct", amountCents: 10000 }]);
+    expect(leftoverCents).toBe(0);
+    expect(applyAllocations(reversed, allocations).find((i) => i.id === "oct")?.paidCents).toBe(10000);
   });
 });

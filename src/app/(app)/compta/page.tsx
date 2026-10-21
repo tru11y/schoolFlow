@@ -8,6 +8,7 @@ import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle, StatCard } from "@/presentation/components/ui";
 import { GenerateButton, PayDialog } from "./compta-controls";
+import { PaymentRowActions } from "./payment-row-actions";
 import { loadPayerSummaries } from "./summaries";
 
 const FILTERS = [
@@ -24,7 +25,7 @@ const STATUS_VIEW: Record<InvoiceStatusValue, { label: string; tone: "success" |
   OVERDUE: { label: "En retard", tone: "danger" },
 };
 
-const METHOD_LABELS = { CASH: "Espèces", MOBILE_MONEY: "Mobile Money", TRANSFER: "Virement" } as const;
+const METHOD_LABELS = { CASH: "Espèces", MOBILE_MONEY: "Mobile Money", TRANSFER: "Virement", CHEQUE: "Chèque" } as const;
 
 const matches = (filter: string | undefined, status: InvoiceStatusValue) =>
   !filter ||
@@ -36,6 +37,7 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
   const principal = await requirePagePermission("finance:read");
   const { status: filter } = await searchParams;
   const canWrite = can(principal.role, "finance:write");
+  const canManagePayments = can(principal.role, "payment:manage");
   const currency = await getSchoolCurrency(principal.schoolId);
   const symbol = CURRENCIES[currency].symbol;
   const db = tenantPrisma(principal);
@@ -52,11 +54,12 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
       include: { student: { select: { firstName: true, lastName: true } } },
     }),
     db.payment.findMany({
+      where: { deletedAt: null },
       orderBy: { paidAt: "desc" },
       take: 8,
       include: { student: { select: { firstName: true, lastName: true } } },
     }),
-    db.payment.aggregate({ _sum: { amountCents: true }, where: { paidAt: { gte: monthStart } } }),
+    db.payment.aggregate({ _sum: { amountCents: true }, where: { deletedAt: null, paidAt: { gte: monthStart } } }),
     canWrite ? loadPayerSummaries(db, currency) : Promise.resolve([]),
   ]);
 
@@ -156,7 +159,7 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
 
       <h2 className="mb-3 mt-8 text-lg font-semibold">Derniers paiements</h2>
       <Card className="overflow-x-auto p-2 sm:p-4">
-        <table className="w-full min-w-[640px] text-left text-sm">
+        <table className="w-full min-w-[720px] text-left text-sm">
           <caption className="sr-only">Derniers paiements</caption>
           <thead className="text-ink/70">
             <tr>
@@ -166,6 +169,7 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
               <th scope="col" className="px-4 py-3 font-medium">Mode</th>
               <th scope="col" className="px-4 py-3 text-right font-medium">Montant</th>
               <th scope="col" className="px-4 py-3 text-right font-medium">Reçu</th>
+              {canManagePayments ? <th scope="col" className="px-4 py-3 text-right font-medium">Actions</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -181,10 +185,26 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
                     Reçu PDF certifié SHA-256
                   </a>
                 </td>
+                {canManagePayments ? (
+                  <td className="px-4 py-3">
+                    <PaymentRowActions
+                      currency={symbol}
+                      exponent={CURRENCIES[currency].exponent}
+                      payment={{
+                        id: p.id,
+                        amount: p.amountCents / 10 ** CURRENCIES[currency].exponent,
+                        method: p.method,
+                        description: p.description,
+                        paidAt: p.paidAt.toISOString().slice(0, 10),
+                        reference: p.reference,
+                      }}
+                    />
+                  </td>
+                ) : null}
               </tr>
             ))}
             {payments.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-ink/70">Aucun paiement enregistré.</td></tr>
+              <tr><td colSpan={canManagePayments ? 7 : 6} className="px-4 py-8 text-center text-ink/70">Aucun paiement enregistré.</td></tr>
             ) : null}
           </tbody>
         </table>

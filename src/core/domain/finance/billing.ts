@@ -69,3 +69,46 @@ export function planMonthlyInvoice(feeCents: number, previousOpen: (Balance & { 
 export function statusAfterPayment(i: Balance & { dueDate: Date }, today: Date): InvoiceStatusValue {
   return effectiveStatus(i, today);
 }
+
+export interface InvoiceState extends Balance {
+  id: string;
+  dueDate: Date;
+  carriedOverCents: number;
+  carriedToInvoiceId: string | null;
+}
+
+/**
+ * Undoes a payment's allocations. An invoice already folded into a newer one has its
+ * remaining balance in that newer invoice, so the reversed amount is added back there.
+ */
+export function reverseAllocations(invoices: InvoiceState[], allocations: Allocation[]): InvoiceState[] {
+  const byId = new Map(invoices.map((i) => [i.id, { ...i }]));
+  for (const a of allocations) {
+    const inv = byId.get(a.invoiceId);
+    if (!inv) continue;
+    inv.paidCents = Math.max(0, inv.paidCents - a.amountCents);
+    let target = inv;
+    for (let hops = 0; target.carriedToInvoiceId && hops < byId.size; hops++) {
+      const next = byId.get(target.carriedToInvoiceId);
+      if (!next) break;
+      target = next;
+    }
+    if (target !== inv) {
+      target.amountCents += a.amountCents;
+      target.carriedOverCents += a.amountCents;
+    }
+  }
+  return [...byId.values()];
+}
+
+/** Applies allocations on top of the given state. */
+export function applyAllocations(invoices: InvoiceState[], allocations: Allocation[]): InvoiceState[] {
+  const paid = new Map(allocations.map((a) => [a.invoiceId, a.amountCents]));
+  return invoices.map((i) => ({ ...i, paidCents: i.paidCents + (paid.get(i.id) ?? 0) }));
+}
+
+/** Open (payable) invoices of a state: carried invoices never take payments. */
+export const openInvoicesOf = (invoices: InvoiceState[]): OpenInvoice[] =>
+  invoices
+    .filter((i) => i.carriedToInvoiceId === null && remaining(i) > 0)
+    .map((i) => ({ id: i.id, dueDate: i.dueDate, remainingCents: remaining(i) }));
