@@ -4,7 +4,9 @@ import { can } from "@/core/domain/rbac/role";
 import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
+import { DeleteButton } from "@/presentation/components/delete-button";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { deleteAttendanceSession } from "./actions";
 
 const LABELS = { PRESENT: "Présent", ABSENT: "Absent", LATE: "Retard" } as const;
 const TONES = { PRESENT: "success", ABSENT: "danger", LATE: "warning" } as const;
@@ -13,12 +15,13 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
   const principal = await requirePagePermission("attendance:read");
   const db = tenantPrisma(principal);
 
+  const canDelete = can(principal.role, "user:manage");
   if (can(principal.role, "attendance:write")) {
     const levels = await listLevels(db);
     const { level: rawLevel } = await searchParams;
     const level = levels.find((l) => l.name === rawLevel)?.name;
     const sessions = await db.attendanceSession.findMany({
-      where: { date: new Date(localParts(new Date()).date), ...(level ? { level } : {}) },
+      where: { deletedAt: null, date: new Date(localParts(new Date()).date), ...(level ? { level } : {}) },
       orderBy: { submittedAt: "desc" },
       include: {
         recorder: { select: { firstName: true, lastName: true } },
@@ -81,6 +84,7 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
                     <Badge tone="success">{n("PRESENT")} présents</Badge>
                     {n("ABSENT") ? <Badge tone="danger">{n("ABSENT")} absents</Badge> : null}
                     {n("LATE") ? <Badge tone="warning">{n("LATE")} retards</Badge> : null}
+                    {canDelete ? <DeleteButton id={s.id} action={deleteAttendanceSession} label="cet appel" /> : null}
                   </div>
                 </li>
               );

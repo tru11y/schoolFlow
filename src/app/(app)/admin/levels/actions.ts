@@ -102,7 +102,7 @@ export const deleteLevel = secureAction(
     const [students, slots, chapters] = await Promise.all([
       prisma.studentProfile.count({ where }),
       prisma.timetableSlot.count({ where }),
-      prisma.curriculumChapter.count({ where }),
+      prisma.curriculumChapter.count({ where: { ...where, deletedAt: null } }),
     ]);
     const count = students + slots + chapters;
     if (count > 0) return { status: "in_use", count };

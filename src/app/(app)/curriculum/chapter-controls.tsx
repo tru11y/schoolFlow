@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createChapter, setChapterDone } from "./actions";
+import { DeleteButton } from "@/presentation/components/delete-button";
+import { createChapter, deleteChapter, setChapterDone, updateChapter } from "./actions";
 
 const field =
   "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
@@ -62,5 +63,39 @@ export function AddChapter({ subjects, levels }: { subjects: string[]; levels: s
       </button>
       {error ? <p role="alert" className="text-sm text-danger sm:col-span-4">{error}</p> : null}
     </form>
+  );
+}
+
+/** ✏️ inline rename + 🗑️ delete (admins only) for one chapter. */
+export function ChapterActions({ id, title, canDelete }: { id: string; title: string; canDelete: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  if (editing) {
+    return (
+      <form
+        action={(fd) =>
+          start(async () => {
+            const res = await updateChapter({ id, title: fd.get("title") });
+            if (!res.ok) return setError(res.error.message);
+            setError(null);
+            setEditing(false);
+          })
+        }
+        className="flex items-center gap-2"
+      >
+        <input name="title" defaultValue={title} required maxLength={160} aria-label="Titre du chapitre" className={`${field} min-w-48 py-1.5`} />
+        <button disabled={pending} className="min-h-9 rounded-xl bg-accent px-3 text-sm font-medium text-canvas disabled:opacity-60">{pending ? "…" : "OK"}</button>
+        <button type="button" onClick={() => setEditing(false)} className="min-h-9 rounded-xl px-3 text-sm ring-1 ring-ink/15">Annuler</button>
+        {error ? <span role="alert" className="text-xs text-danger">{error}</span> : null}
+      </form>
+    );
+  }
+  return (
+    <span className="flex items-center">
+      <button type="button" onClick={() => setEditing(true)} aria-label={`Modifier le chapitre ${title}`} className="min-h-9 rounded-xl px-2 text-sm hover:bg-raised"><span aria-hidden>✏️</span></button>
+      {canDelete ? <DeleteButton id={id} action={deleteChapter} label="ce chapitre" /> : null}
+    </span>
   );
 }

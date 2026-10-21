@@ -66,7 +66,7 @@ export const saveLogbookEntry = secureAction(
       endTime ??= slot.endTime;
     }
 
-    const chapter = input.chapterId ? await db.curriculumChapter.findFirst({ where: { id: input.chapterId } }) : null;
+    const chapter = input.chapterId ? await db.curriculumChapter.findFirst({ where: { id: input.chapterId, deletedAt: null } }) : null;
     if (input.chapterId && (!chapter || chapter.level !== input.level || chapter.subject !== input.subject)) {
       throw new ForbiddenError("logbook:chapter");
     }
@@ -88,7 +88,7 @@ export const saveLogbookEntry = secureAction(
 
     // Update an explicit entry, or the one already written for this slot and day; otherwise create.
     const existing = input.id
-      ? await db.logbookEntry.findFirst({ where: { id: input.id } })
+      ? await db.logbookEntry.findFirst({ where: { id: input.id, deletedAt: null } })
       : input.slotId
         ? await db.logbookEntry.findFirst({ where: { slotId: input.slotId, date } })
         : null;
@@ -96,7 +96,7 @@ export const saveLogbookEntry = secureAction(
     if (existing && isTeacher && existing.teacherId !== principal.userId) throw new ForbiddenError("logbook:not-owner");
 
     const saved = existing
-      ? await db.logbookEntry.update({ where: { id: existing.id }, data, select: { id: true } })
+      ? await db.logbookEntry.update({ where: { id: existing.id }, data: { ...data, deletedAt: null }, select: { id: true } })
       : await db.logbookEntry.create({ data: { ...data, schoolId, teacherId: principal.userId }, select: { id: true } });
 
     if (chapter && input.chapterDone && !chapter.completedAt) {
@@ -106,5 +106,25 @@ export const saveLogbookEntry = secureAction(
     revalidatePath("/cahier-de-texte");
     revalidatePath("/curriculum");
     return saved;
+  },
+);
+
+/** Soft delete: restorable from /admin/trash. Teachers may only delete their own entries. */
+export const deleteLogbookEntry = secureAction(
+  {
+    name: "LOGBOOK_ENTRY_DELETED",
+    resource: "logbook",
+    permission: "homework:write",
+    input: z.object({ id: z.string().uuid() }),
+    resourceId: (i) => i.id,
+  },
+  async ({ input, db, principal }) => {
+    const entry = await db.logbookEntry.findFirst({ where: { id: input.id, deletedAt: null }, select: { teacherId: true } });
+    if (!entry) throw new ForbiddenError("logbook:not-found");
+    if (principal.role === "TEACHER" && entry.teacherId !== principal.userId) throw new ForbiddenError("logbook:not-owner");
+    await db.logbookEntry.update({ where: { id: input.id }, data: { deletedAt: new Date() } });
+    revalidatePath("/cahier-de-texte");
+    revalidatePath("/admin/trash");
+    return { id: input.id };
   },
 );

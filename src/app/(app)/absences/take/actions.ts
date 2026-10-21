@@ -72,6 +72,7 @@ export const takeAttendance = secureAction(
       submittedAt: now,
       isOverdue,
       offsetMinutes: timing.offsetMinutes,
+      deletedAt: null,
     };
 
     let session: { id: string };

@@ -168,3 +168,50 @@ export const resetUserPassword = secureAction(
     return { tempPassword };
   },
 );
+
+/** Soft delete: the account is locked and its sessions revoked; restorable from /admin/trash. */
+export const deleteUser = secureAction(
+  {
+    name: "USER_DELETED",
+    resource: "user",
+    permission: "user:manage",
+    input: z.object({ id: z.string().uuid() }),
+    resourceId: (i) => i.id,
+  },
+  async ({ input, db, principal }) => {
+    await loadManageable(db, principal, input.id);
+    await db.user.update({ where: { id: input.id }, data: { deletedAt: new Date(), isActive: false } });
+    await revokeSessions(input.id);
+    revalidatePath("/admin/users");
+    revalidatePath("/admin/trash");
+    return { id: input.id };
+  },
+);
+
+export const updateUser = secureAction(
+  {
+    name: "USER_UPDATED",
+    resource: "user",
+    permission: "user:manage",
+    input: z.object({
+      id: z.string().uuid(),
+      firstName: text(60),
+      lastName: text(60),
+      email: base.email,
+      phone: base.phone,
+    }),
+    resourceId: (i) => i.id,
+    auditMetadata: () => ({ change: "profile" }),
+  },
+  async ({ input, db, principal }) => {
+    await loadManageable(db, principal, input.id);
+    const taken = await prisma.user.findFirst({ where: { email: input.email, NOT: { id: input.id } }, select: { id: true } });
+    if (taken) throw new ForbiddenError("user:email-taken");
+    await db.user.update({
+      where: { id: input.id },
+      data: { firstName: input.firstName, lastName: input.lastName, email: input.email, phone: input.phone ?? null },
+    });
+    revalidatePath("/admin/users");
+    return { id: input.id };
+  },
+);

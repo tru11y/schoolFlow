@@ -4,17 +4,18 @@ import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
-import { AddChapter, ChapterCheck } from "./chapter-controls";
+import { AddChapter, ChapterActions, ChapterCheck } from "./chapter-controls";
 
 export default async function CurriculumPage({ searchParams }: { searchParams: Promise<{ level?: string }> }) {
   const principal = await requirePagePermission("homework:read");
   const canWrite = can(principal.role, "homework:write");
+  const canDelete = can(principal.role, "user:manage");
   const db = tenantPrisma(principal);
   const levels = await listLevels(db);
   const { level: rawLevel } = await searchParams;
   const level = levels.find((l) => l.name === rawLevel)?.name;
   const chapters = await db.curriculumChapter.findMany({
-    where: level ? { level } : {},
+    where: { deletedAt: null, ...(level ? { level } : {}) },
     orderBy: [{ level: "asc" }, { subject: "asc" }, { position: "asc" }],
   });
 
@@ -69,6 +70,7 @@ export default async function CurriculumPage({ searchParams }: { searchParams: P
                       <ChapterCheck id={c.id} title={c.title} position={c.position} done={!!c.completedAt} canWrite={canWrite} />
                     </div>
                     {next?.id === c.id ? <Badge tone="warning">En cours</Badge> : null}
+                    {canWrite ? <ChapterActions id={c.id} title={c.title} canDelete={canDelete} /> : null}
                   </li>
                 ))}
               </ul>

@@ -42,7 +42,7 @@ export const setChapterDone = secureAction(
     auditMetadata: (i) => ({ done: i.done }),
   },
   async ({ input, db, principal }) => {
-    const chapter = await db.curriculumChapter.findFirst({ where: { id: input.id }, select: { id: true } });
+    const chapter = await db.curriculumChapter.findFirst({ where: { id: input.id, deletedAt: null }, select: { id: true } });
     if (!chapter) throw new ForbiddenError("chapter:not-found");
 
     await db.curriculumChapter.update({
@@ -51,6 +51,42 @@ export const setChapterDone = secureAction(
     });
     revalidatePath("/curriculum");
     revalidatePath("/students", "layout");
+    return { id: input.id };
+  },
+);
+
+export const updateChapter = secureAction(
+  {
+    name: "CHAPTER_UPDATED",
+    resource: "curriculum",
+    permission: "homework:write",
+    input: z.object({ id: z.string().uuid(), title: text(160) }),
+    resourceId: (i) => i.id,
+    auditMetadata: () => ({ change: "title" }),
+  },
+  async ({ input, db }) => {
+    const { count } = await db.curriculumChapter.updateMany({ where: { id: input.id, deletedAt: null }, data: { title: input.title } });
+    if (count === 0) throw new ForbiddenError("chapter:not-found");
+    revalidatePath("/curriculum");
+    revalidatePath("/cahier-de-texte");
+    return { id: input.id };
+  },
+);
+
+/** Soft delete: restorable from /admin/trash. */
+export const deleteChapter = secureAction(
+  {
+    name: "CHAPTER_DELETED",
+    resource: "curriculum",
+    permission: "user:manage",
+    input: z.object({ id: z.string().uuid() }),
+    resourceId: (i) => i.id,
+  },
+  async ({ input, db }) => {
+    const { count } = await db.curriculumChapter.updateMany({ where: { id: input.id, deletedAt: null }, data: { deletedAt: new Date() } });
+    if (count === 0) throw new ForbiddenError("chapter:not-found");
+    revalidatePath("/curriculum");
+    revalidatePath("/admin/trash");
     return { id: input.id };
   },
 );

@@ -5,7 +5,9 @@ import { can } from "@/core/domain/rbac/role";
 import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
+import { DeleteButton } from "@/presentation/components/delete-button";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { deleteLogbookEntry } from "./actions";
 import { LogbookForm, type LogbookInitial } from "./logbook-form";
 import { loadReadableLevels, loadWriteScopes } from "./scopes";
 
@@ -31,7 +33,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Prom
   const readable = await loadReadableLevels(db, principal, allLevels);
   const level = readable.includes(q.level ?? "") ? q.level : readable.length === 1 ? readable[0] : undefined;
 
-  const where = { level: level ?? { in: readable }, ...(q.subject ? { subject: q.subject } : {}) };
+  const where = { deletedAt: null, level: level ?? { in: readable }, ...(q.subject ? { subject: q.subject } : {}) };
   const [entries, subjectRows] = await Promise.all([
     db.logbookEntry.findMany({
       where,
@@ -42,7 +44,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Prom
         chapter: { select: { position: true, title: true } },
       },
     }),
-    db.logbookEntry.findMany({ where: { level: level ?? { in: readable } }, distinct: ["subject"], select: { subject: true }, orderBy: { subject: "asc" } }),
+    db.logbookEntry.findMany({ where: { deletedAt: null, level: level ?? { in: readable } }, distinct: ["subject"], select: { subject: true }, orderBy: { subject: "asc" } }),
   ]);
 
   // Composer data (teachers: only their scopes; admins: everything configured)
@@ -55,7 +57,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Prom
         orderBy: [{ weekday: "asc" }, { startTime: "asc" }],
         select: { id: true, level: true, subject: true, weekday: true, startTime: true, endTime: true },
       }),
-      db.curriculumChapter.findMany({ orderBy: [{ subject: "asc" }, { position: "asc" }] }),
+      db.curriculumChapter.findMany({ where: { deletedAt: null }, orderBy: [{ subject: "asc" }, { position: "asc" }] }),
     ]);
 
     const subjectsByLevel: Record<string, string[]> = {};
@@ -72,7 +74,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Prom
 
     let initial: LogbookInitial | undefined;
     if (q.edit) {
-      const e = await db.logbookEntry.findFirst({ where: { id: q.edit } });
+      const e = await db.logbookEntry.findFirst({ where: { id: q.edit, deletedAt: null } });
       if (e && (all || e.teacherId === principal.userId)) {
         initial = {
           id: e.id, level: e.level, subject: e.subject, date: iso(e.date), slotId: e.slotId ?? undefined,
@@ -149,7 +151,10 @@ export default async function LogbookPage({ searchParams }: { searchParams: Prom
                 <Badge tone="warning">{e.level}</Badge>
                 {e.chapter ? <Badge tone="success">Ch. {e.chapter.position} · {e.chapter.title}</Badge> : null}
                 {canWrite && mine ? (
-                  <Link href={`/cahier-de-texte?edit=${e.id}`} className="ml-auto rounded-xl px-3 py-1 text-sm text-ink/70 hover:bg-raised">Modifier</Link>
+                  <span className="ml-auto flex items-center gap-1">
+                    <Link href={`/cahier-de-texte?edit=${e.id}`} className="rounded-xl px-3 py-1 text-sm text-ink/70 hover:bg-raised"><span aria-hidden>✏️ </span>Modifier</Link>
+                    <DeleteButton id={e.id} action={deleteLogbookEntry} label="cette séance" />
+                  </span>
                 ) : null}
               </header>
               <h2 className="mt-3 text-lg font-semibold">{e.title}</h2>

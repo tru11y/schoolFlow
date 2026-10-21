@@ -71,7 +71,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
       },
     }),
     profile
-      ? db.curriculumChapter.findMany({ where: { level: profile.level }, orderBy: [{ subject: "asc" }, { position: "asc" }] })
+      ? db.curriculumChapter.findMany({ where: { level: profile.level, deletedAt: null }, orderBy: [{ subject: "asc" }, { position: "asc" }] })
       : [],
     db.user.findMany({
       where: { role: "TEACHER", deletedAt: null },

@@ -3,9 +3,10 @@
 import { RotateCcw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { restoreStudent } from "../../students/actions";
+import { restoreItem } from "./actions";
+import type { TrashKind } from "./kinds";
 
-export function RestoreButton({ id, name }: { id: string; name: string }) {
+export function RestoreButton({ id, kind, name }: { id: string; kind: TrashKind; name: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +19,7 @@ export function RestoreButton({ id, name }: { id: string; name: string }) {
         aria-label={`Restaurer ${name}`}
         onClick={() =>
           start(async () => {
-            const res = await restoreStudent({ id });
+            const res = await restoreItem({ kind, id });
             if (!res.ok) return setError("Restauration impossible.");
             router.refresh();
           })

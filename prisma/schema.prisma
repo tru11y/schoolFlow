@@ -156,6 +156,7 @@ model CurriculumChapter {
   completedAt    DateTime?
   completedById  String?         @db.Uuid
   createdAt      DateTime        @default(now())
+  deletedAt      DateTime?
   slots          TimetableSlot[]
   logbookEntries LogbookEntry[]
 
@@ -386,6 +387,7 @@ model AttendanceSession {
   isOverdue     Boolean            @default(false)
   /// Minutes after the slot end (positive) or before its start (negative); null without slot.
   offsetMinutes Int?
+  deletedAt     DateTime?
   records       AttendanceRecord[]
 
   @@unique([slotId, date])
@@ -414,6 +416,7 @@ model LogbookEntry {
   homeworkDue DateTime?          @db.Date
   chapterId   String?            @db.Uuid
   chapter     CurriculumChapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  deletedAt   DateTime?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 

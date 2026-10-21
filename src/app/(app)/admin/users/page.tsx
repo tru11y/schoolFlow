@@ -102,7 +102,7 @@ export default async function UsersPage({
                   </td>
                   <td className="px-4 py-3">
                     {manageable ? (
-                      <UserActions id={u.id} role={u.role} active={u.isActive} assignable={creatable} />
+                      <UserActions id={u.id} role={u.role} active={u.isActive} assignable={creatable} user={{ id: u.id, firstName: u.firstName, lastName: u.lastName, email: u.email, phone: u.phone }} />
                     ) : (
                       <p className="text-right text-xs text-ink/60">{u.id === principal.userId ? "Vous" : "—"}</p>
                     )}

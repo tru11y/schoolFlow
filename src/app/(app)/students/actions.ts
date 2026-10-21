@@ -172,7 +172,7 @@ export const saveSlot = secureAction(
     }
     const level = student.profile?.level ?? null;
     if (input.chapterId) {
-      const chapter = await db.curriculumChapter.findFirst({ where: { id: input.chapterId }, select: { level: true } });
+      const chapter = await db.curriculumChapter.findFirst({ where: { id: input.chapterId, deletedAt: null }, select: { level: true } });
       if (!chapter || chapter.level !== level) throw new ForbiddenError("chapter:not-found");
     }
     if (input.scope === "class" && !level) throw new ForbiddenError("student:no-level");

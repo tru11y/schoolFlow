@@ -38,7 +38,7 @@ export default async function DashboardPage() {
     db.user.count({ where: { role: "STUDENT", deletedAt: null } }),
     db.attendanceRecord.count({ where: { date: todayUtc(), status: "PRESENT" } }),
     db.attendanceRecord.count({ where: { date: todayUtc() } }),
-    db.logbookEntry.count(),
+    db.logbookEntry.count({ where: { deletedAt: null } }),
     showFinance
       ? db.invoice.findMany({ where: { deletedAt: null, carriedToInvoiceId: null }, select: { amountCents: true, paidCents: true } })
       : null,

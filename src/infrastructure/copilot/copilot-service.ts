@@ -103,8 +103,8 @@ export async function teacherPunctuality(principal: Principal, now: Date = new D
       where: { teacherId: { not: null }, level: { not: null } },
       select: { id: true, weekday: true, endTime: true, createdAt: true, teacher: { select: { id: true, firstName: true, lastName: true, deletedAt: true } } },
     }),
-    db.attendanceSession.findMany({ where: { date: { gte: new Date(from) }, slotId: { not: null } }, select: { slotId: true, date: true, isOverdue: true } }),
-    db.logbookEntry.findMany({ where: { date: { gte: new Date(from) }, slotId: { not: null } }, select: { slotId: true, date: true } }),
+    db.attendanceSession.findMany({ where: { deletedAt: null, date: { gte: new Date(from) }, slotId: { not: null } }, select: { slotId: true, date: true, isOverdue: true } }),
+    db.logbookEntry.findMany({ where: { deletedAt: null, date: { gte: new Date(from) }, slotId: { not: null } }, select: { slotId: true, date: true } }),
   ]);
 
   const sessionAt = new Map(sessions.map((s) => [`${s.slotId}|${isoDate(s.date)}`, s]));

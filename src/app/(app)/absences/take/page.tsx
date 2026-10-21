@@ -53,7 +53,7 @@ export default async function TakeAttendancePage({ searchParams }: { searchParam
       }),
       resolved.timing.slot
         ? db.attendanceSession.findFirst({
-            where: { slotId: resolved.timing.slot.id, date: resolved.date },
+            where: { slotId: resolved.timing.slot.id, date: resolved.date, deletedAt: null },
             select: { records: { select: { studentId: true, status: true } } },
           })
         : null,

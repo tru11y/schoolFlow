@@ -3,7 +3,9 @@
 import { useState, useTransition } from "react";
 import type { Role } from "@/core/domain/rbac/role";
 import { ROLE_LABELS, SWITCHABLE_ROLES } from "@/core/domain/rbac/user-management";
-import { changeUserRole, resetUserPassword, setUserActive } from "./actions";
+import { DeleteButton } from "@/presentation/components/delete-button";
+import { changeUserRole, deleteUser, resetUserPassword, setUserActive } from "./actions";
+import { EditUser, type EditableUser } from "./edit-user";
 
 interface Props {
   id: string;
@@ -11,12 +13,13 @@ interface Props {
   active: boolean;
   /** Roles the current user may assign */
   assignable: Role[];
+  user: EditableUser;
 }
 
 const btn =
   "min-h-9 rounded-xl px-3 text-xs outline-none transition hover:bg-raised focus-visible:ring-2 focus-visible:ring-accent active:scale-95 disabled:opacity-60";
 
-export function UserActions({ id, role, active, assignable }: Props) {
+export function UserActions({ id, role, active, assignable, user }: Props) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const run = (fn: () => Promise<{ ok: boolean; error?: { message: string } }>, ok: string) =>
@@ -59,6 +62,8 @@ export function UserActions({ id, role, active, assignable }: Props) {
       >
         Réinitialiser le mot de passe
       </button>
+      <EditUser user={user} />
+      <DeleteButton id={id} action={deleteUser} label={`le compte de ${user.firstName} ${user.lastName}`} />
       {message ? (
         <span role="status" className="w-full text-right font-mono text-xs text-ink/80">{message}</span>
       ) : null}
