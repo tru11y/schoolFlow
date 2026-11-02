@@ -14,6 +14,13 @@ describe("rbac", () => {
     }
   });
 
+  it("reserves invoice management to SUPER_ADMIN", () => {
+    expect(can("SUPER_ADMIN", "invoice:manage")).toBe(true);
+    for (const role of ["SCHOOL_ADMIN", "ACCOUNTANT", "TEACHER", "STUDENT", "PARENT"] as const) {
+      expect(can(role, "invoice:manage")).toBe(false);
+    }
+  });
+
   it("reserves payment edit/delete to SUPER_ADMIN and SCHOOL_ADMIN", () => {
     expect(can("SUPER_ADMIN", "payment:manage")).toBe(true);
     expect(can("SCHOOL_ADMIN", "payment:manage")).toBe(true);

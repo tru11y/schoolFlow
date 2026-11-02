@@ -8,6 +8,8 @@ export const PERMISSIONS = [
   "finance:write",
   /** Edit or cancel a recorded payment. SUPER_ADMIN and SCHOOL_ADMIN only. */
   "payment:manage",
+  /** Edit, cancel, adjust an invoice and purge test accounting data. SUPER_ADMIN only. */
+  "invoice:manage",
   "receipt:issue",
   "attendance:read",
   "attendance:write",

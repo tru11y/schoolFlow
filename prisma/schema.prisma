@@ -314,7 +314,10 @@ model Invoice {
   /// Set on an old invoice whose remaining balance was folded into a newer one (excluded from balances).
   carriedToInvoiceId String?       @db.Uuid
   createdAt          DateTime      @default(now())
+  /// Soft delete: the row stays for the audit trail but no longer counts anywhere.
   deletedAt          DateTime?
+  deletedById        String?       @db.Uuid
+  deleteReason       String?
 
   @@unique([studentId, period])
   @@index([schoolId, status])

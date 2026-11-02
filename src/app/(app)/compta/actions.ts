@@ -233,6 +233,155 @@ export const updatePayment = secureAction(
   },
 );
 
+export type InvoiceChangeResult =
+  | { status: "ok"; invoiceId: string; studentId: string; oldAmountCents: number; newAmountCents: number; actor: { name: string; email: string } }
+  | { status: "not_found" }
+  | { status: "has_payments"; paidCents: number }
+  | { status: "below_paid"; paidCents: number };
+
+export const adjustInvoice = secureAction(
+  {
+    name: "INVOICE_ADJUSTED",
+    resource: "invoice",
+    permission: "invoice:manage",
+    input: z.object({
+      invoiceId: z.string().uuid(),
+      amount: z.coerce.number().min(0).max(1_000_000_000),
+      reason: text(200),
+    }),
+    resourceId: (i) => i.invoiceId,
+    auditMetadata: (i, data: InvoiceChangeResult | undefined) => ({
+      reason: i.reason,
+      ...(data?.status === "ok"
+        ? { oldAmountCents: data.oldAmountCents, newAmountCents: data.newAmountCents, actor: data.actor }
+        : { outcome: data?.status }),
+    }),
+    auditSeverity: () => "WARNING",
+  },
+  async ({ input, db, principal }): Promise<InvoiceChangeResult> => {
+    const invoice = await db.invoice.findFirst({ where: { id: input.invoiceId, deletedAt: null } });
+    if (!invoice) return { status: "not_found" };
+
+    const currency = await getSchoolCurrency(invoice.schoolId);
+    const newAmountCents = toMinorUnits(input.amount, currency);
+    if (newAmountCents < invoice.paidCents) return { status: "below_paid", paidCents: invoice.paidCents };
+
+    const today = new Date(localParts(new Date()).date);
+    const status = statusAfterPayment({ amountCents: newAmountCents, paidCents: invoice.paidCents, dueDate: invoice.dueDate }, today);
+
+    await prisma.invoice.update({
+      where: { id: invoice.id },
+      data: {
+        amountCents: newAmountCents,
+        status,
+        paidAt: status === "PAID" ? (invoice.paidAt ?? new Date()) : null,
+      },
+    });
+
+    revalidatePayments(invoice.studentId);
+    return {
+      status: "ok",
+      invoiceId: invoice.id,
+      studentId: invoice.studentId,
+      oldAmountCents: invoice.amountCents,
+      newAmountCents,
+      actor: await loadActor(principal.userId),
+    };
+  },
+);
+
+export const deleteInvoice = secureAction(
+  {
+    name: "INVOICE_DELETED",
+    resource: "invoice",
+    permission: "invoice:manage",
+    input: z.object({ invoiceId: z.string().uuid(), reason: text(200) }),
+    resourceId: (i) => i.invoiceId,
+    auditMetadata: (i, data: InvoiceChangeResult | undefined) => ({
+      reason: i.reason,
+      ...(data?.status === "ok"
+        ? { oldAmountCents: data.oldAmountCents, newAmountCents: 0, actor: data.actor }
+        : { outcome: data?.status, ...(data?.status === "has_payments" ? { paidCents: data.paidCents } : {}) }),
+    }),
+    auditSeverity: () => "WARNING",
+  },
+  async ({ input, db, principal }): Promise<InvoiceChangeResult> => {
+    const invoice = await db.invoice.findFirst({ where: { id: input.invoiceId, deletedAt: null } });
+    if (!invoice) return { status: "not_found" };
+    if (invoice.paidCents > 0) return { status: "has_payments", paidCents: invoice.paidCents };
+
+    await prisma.$transaction([
+      prisma.invoice.update({
+        where: { id: invoice.id },
+        data: { deletedAt: new Date(), deletedById: principal.userId, deleteReason: input.reason },
+      }),
+      // Any later invoice that folded this one's remainder keeps its own total; drop only the back-reference.
+      prisma.invoice.updateMany({ where: { carriedToInvoiceId: invoice.id }, data: { carriedToInvoiceId: null } }),
+    ]);
+
+    revalidatePayments(invoice.studentId);
+    return {
+      status: "ok",
+      invoiceId: invoice.id,
+      studentId: invoice.studentId,
+      oldAmountCents: invoice.amountCents,
+      newAmountCents: 0,
+      actor: await loadActor(principal.userId),
+    };
+  },
+);
+
+export type PurgeResult =
+  | { status: "ok"; invoicesPurged: number; paymentsPurged: number; before: string; actor: { name: string; email: string } }
+  | { status: "tenant_missing" };
+
+export const purgeTestData = secureAction(
+  {
+    name: "ACCOUNTING_PURGED",
+    resource: "school",
+    permission: "invoice:manage",
+    input: z.object({
+      before: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      reason: text(200),
+    }),
+    resourceId: (_i, data: PurgeResult | undefined) => (data?.status === "ok" ? null : null),
+    auditMetadata: (i, data: PurgeResult | undefined) => ({
+      before: i.before,
+      reason: i.reason,
+      ...(data?.status === "ok"
+        ? { invoicesPurged: data.invoicesPurged, paymentsPurged: data.paymentsPurged, actor: data.actor }
+        : { outcome: data?.status }),
+    }),
+    auditSeverity: () => "WARNING",
+  },
+  async ({ input, principal }): Promise<PurgeResult> => {
+    if (!principal.schoolId) return { status: "tenant_missing" };
+    const pivot = new Date(`${input.before}T00:00:00.000Z`);
+    const now = new Date();
+
+    const [invoices, payments] = await prisma.$transaction([
+      prisma.invoice.updateMany({
+        where: { schoolId: principal.schoolId, deletedAt: null, createdAt: { lt: pivot } },
+        data: { deletedAt: now, deletedById: principal.userId, deleteReason: input.reason },
+      }),
+      prisma.payment.updateMany({
+        where: { schoolId: principal.schoolId, deletedAt: null, createdAt: { lt: pivot } },
+        data: { deletedAt: now, deletedById: principal.userId, deleteReason: input.reason },
+      }),
+    ]);
+
+    revalidatePath("/compta");
+    revalidatePath("/dashboard");
+    return {
+      status: "ok",
+      invoicesPurged: invoices.count,
+      paymentsPurged: payments.count,
+      before: input.before,
+      actor: await loadActor(principal.userId),
+    };
+  },
+);
+
 export const deletePayment = secureAction(
   {
     name: "PAYMENT_DELETED",

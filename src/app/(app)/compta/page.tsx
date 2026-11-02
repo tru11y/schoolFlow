@@ -8,6 +8,8 @@ import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle, StatCard } from "@/presentation/components/ui";
 import { GenerateButton, PayDialog } from "./compta-controls";
+import { DangerZone } from "./danger-zone";
+import { InvoiceRowActions } from "./invoice-row-actions";
 import { PaymentRowActions } from "./payment-row-actions";
 import { loadPayerSummaries } from "./summaries";
 
@@ -38,6 +40,7 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
   const { status: filter } = await searchParams;
   const canWrite = can(principal.role, "finance:write");
   const canManagePayments = can(principal.role, "payment:manage");
+  const canManageInvoices = can(principal.role, "invoice:manage");
   const currency = await getSchoolCurrency(principal.schoolId);
   const symbol = CURRENCIES[currency].symbol;
   const db = tenantPrisma(principal);
@@ -139,14 +142,28 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
                   {carried ? <Badge tone="info">Reporté</Badge> : <Badge tone={STATUS_VIEW[status].tone}>{STATUS_VIEW[status].label}</Badge>}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {canWrite && !carried && status !== "PAID" ? (
-                    <Link
-                      href={`/compta/pay?student=${inv.studentId}`}
-                      className="rounded-2xl bg-mint/15 px-4 py-2 text-mint outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                    >
-                      Encaisser
-                    </Link>
-                  ) : null}
+                  <div className="flex items-center justify-end gap-1">
+                    {canWrite && !carried && status !== "PAID" ? (
+                      <Link
+                        href={`/compta/pay?student=${inv.studentId}`}
+                        className="rounded-2xl bg-mint/15 px-4 py-2 text-mint outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      >
+                        Encaisser
+                      </Link>
+                    ) : null}
+                    {canManageInvoices && !carried ? (
+                      <InvoiceRowActions
+                        currency={symbol}
+                        exponent={CURRENCIES[currency].exponent}
+                        invoice={{
+                          id: inv.id,
+                          amount: inv.amountCents / 10 ** CURRENCIES[currency].exponent,
+                          paidCents: inv.paidCents,
+                          label: inv.label,
+                        }}
+                      />
+                    ) : null}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -209,6 +226,8 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
           </tbody>
         </table>
       </Card>
+
+      {canManageInvoices ? <DangerZone /> : null}
     </>
   );
 }
