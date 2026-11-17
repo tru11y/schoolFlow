@@ -8,7 +8,7 @@ import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle, StatCard } from "@/presentation/components/ui";
 import { ExportButton } from "@/presentation/components/export-button";
-import { GenerateButton, PayDialog } from "./compta-controls";
+import { PayDialog } from "./compta-controls";
 import { DangerZone } from "./danger-zone";
 import { InvoiceRowActions } from "./invoice-row-actions";
 import { PaymentRowActions } from "./payment-row-actions";
@@ -83,10 +83,7 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
         <div className="flex flex-wrap items-start gap-3">
           <ExportButton resource="invoices" label="Exporter les factures" />
           {canWrite ? (
-            <>
-              <GenerateButton />
-              <PayDialog students={summaries} currency={symbol} defaultDescription={`Mensualité ${periodLabel(periodOf(local.date))}`} />
-            </>
+            <PayDialog students={summaries} currency={symbol} defaultDescription={`Mensualité ${periodLabel(periodOf(local.date))}`} />
           ) : null}
         </div>
       </div>
