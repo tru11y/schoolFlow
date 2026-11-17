@@ -61,6 +61,8 @@ model StudentProfile {
   neighborhood   String?
   commune        String?
   city           String?
+  /// Per-student monthly tuition in minor units; overrides the level fee when set.
+  monthlyFeeCents Int?
   status    EnrollmentStatus @default(ACTIVE)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt

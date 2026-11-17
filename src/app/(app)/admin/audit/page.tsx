@@ -2,6 +2,7 @@ import { prisma } from "@/infrastructure/db/prisma";
 import { PrismaAuditRepository } from "@/infrastructure/audit/prisma-audit-repository";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { ExportButton } from "@/presentation/components/export-button";
 
 const severityOf = (metadata: unknown): string =>
   typeof metadata === "object" && metadata !== null && "severity" in metadata ? String(metadata.severity) : "INFO";
@@ -31,7 +32,10 @@ export default async function AuditPage() {
 
   return (
     <>
-      <PageTitle title="Journal d'audit" subtitle="Append-only, chaîné par HMAC-SHA256" />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <PageTitle title="Journal d'audit" subtitle="Append-only, chaîné par HMAC-SHA256" />
+        <ExportButton resource="audit" label="Exporter le journal" />
+      </div>
       <div className="mb-4">
         <Badge tone={integrity.valid ? "success" : "danger"}>
           {integrity.valid ? "Intégrité de la chaîne vérifiée" : `Chaîne altérée (${integrity.brokenAt})`}

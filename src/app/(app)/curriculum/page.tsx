@@ -4,6 +4,7 @@ import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { ExportButton } from "@/presentation/components/export-button";
 import { AddChapter, ChapterActions, ChapterCheck } from "./chapter-controls";
 
 export default async function CurriculumPage({ searchParams }: { searchParams: Promise<{ level?: string }> }) {
@@ -25,7 +26,10 @@ export default async function CurriculumPage({ searchParams }: { searchParams: P
 
   return (
     <>
-      <PageTitle title="Programmes pédagogiques" subtitle="Chapitres du programme de renforcement, cochés au fil des séances" />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <PageTitle title="Programmes pédagogiques" subtitle="Chapitres du programme de renforcement, cochés au fil des séances" />
+        <ExportButton resource="curriculum" params={{ level }} label="Exporter le programme" />
+      </div>
       {canWrite ? (
         <Card className="mb-6">
           <h2 className="mb-3 text-lg font-semibold">Ajouter un chapitre</h2>

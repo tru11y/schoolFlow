@@ -5,10 +5,16 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
 import { ENROLLMENT_STATUSES } from "@/core/domain/students/student";
+import { toMinorUnits } from "@/core/domain/finance/money";
 import { Argon2Hasher } from "@/infrastructure/auth/argon2-hasher";
 import { prisma } from "@/infrastructure/db/prisma";
+import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { secureAction } from "@/presentation/secure-action";
-import { parentsSchema, slotSchema, text } from "./schemas";
+import { feeField, parentsSchema, slotSchema, text } from "./schemas";
+
+/** "" (no custom fee) → null; otherwise major units converted to the school's minor units. */
+const toFeeCents = async (major: string, schoolId: string): Promise<number | null> =>
+  major === "" ? null : toMinorUnits(Number(major), await getSchoolCurrency(schoolId));
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().transform((v) => v || undefined);
 
@@ -30,6 +36,8 @@ const createInput = z.object({
   city: optionalText(80),
   /** Optional school-assigned student number, unique per school. */
   matricule: matriculeField,
+  /** Optional per-student monthly tuition in major units; overrides the level fee. */
+  monthlyFee: feeField,
   parents: parentsSchema,
 });
 
@@ -55,6 +63,8 @@ export const createStudent = secureAction(
       return { status: "matricule_taken" };
     }
 
+    const monthlyFeeCents = await toFeeCents(input.monthlyFee, schoolId);
+
     // Students sign in with a generated internal identifier; no personal e-mail is collected.
     const login = `eleve.${randomBytes(6).toString("hex")}@schoolflow.local`;
     const tempPassword = randomBytes(9).toString("base64url");
@@ -71,7 +81,7 @@ export const createStudent = secureAction(
           create: {
             schoolId, level: input.level, address: joinAddress(input), matricule: input.matricule ?? null, sex: input.sex ?? null,
             previousSchool: input.previousSchool ?? null, neighborhood: input.neighborhood ?? null,
-            commune: input.commune ?? null, city: input.city ?? null, status: "ACTIVE",
+            commune: input.commune ?? null, city: input.city ?? null, monthlyFeeCents, status: "ACTIVE",
           },
         },
         parents: { create: input.parents.map((p, position) => ({ schoolId, position, ...p })) },
@@ -100,6 +110,7 @@ export const updateStudent = secureAction(
       commune: optionalText(80),
       city: optionalText(80),
       matricule: matriculeField,
+      monthlyFee: feeField,
       status: z.enum(ENROLLMENT_STATUSES),
       parents: parentsSchema,
     }),
@@ -127,6 +138,7 @@ export const updateStudent = secureAction(
       commune: rest.commune ?? null,
       city: rest.city ?? null,
       matricule: rest.matricule ?? null,
+      monthlyFeeCents: await toFeeCents(rest.monthlyFee, schoolId),
       address: joinAddress(rest),
     };
     await db.$transaction([

@@ -115,6 +115,12 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
               <dl className="mb-4 grid grid-cols-2 gap-4 text-sm">
                 <Info label="Classe" value={profile.level} />
                 <Info label="Matricule" value={profile.matricule ?? "—"} />
+                {showFinance ? (
+                  <Info
+                    label="Mensualité"
+                    value={profile.monthlyFeeCents !== null ? `${formatMoney(profile.monthlyFeeCents, currency)} (personnalisée)` : "Tarif de la classe"}
+                  />
+                ) : null}
                 <div className="col-span-2"><Info label="Adresse" value={profile.address} /></div>
               </dl>
               <ul className="mb-6 grid gap-2">
@@ -139,6 +145,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
                   <EditForm
                     id={student.id}
                     levels={levelOptions.map((l) => l.name)}
+                    currency={CURRENCIES[currency].symbol}
                     initial={{
                       firstName: student.firstName,
                       lastName: student.lastName,
@@ -151,6 +158,7 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
                       neighborhood: profile.neighborhood ?? (profile.commune || profile.city || profile.address === "Non renseignée" ? "" : profile.address),
                       commune: profile.commune ?? "",
                       city: profile.city ?? "",
+                      monthlyFee: profile.monthlyFeeCents !== null ? String(profile.monthlyFeeCents / 10 ** CURRENCIES[currency].exponent) : "",
                     }}
                     parents={student.parents.map((p) => ({
                       name: p.name, relation: p.relation, phone: p.phone ?? "", email: p.email ?? "",

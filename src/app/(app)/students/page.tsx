@@ -5,6 +5,7 @@ import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { ExportButton } from "@/presentation/components/export-button";
 import { DeleteStudentButton } from "./delete-student";
 import { STATUS_TONES } from "./status-tones";
 
@@ -51,12 +52,15 @@ export default async function StudentsPage({
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle title="Élèves" subtitle={`${students.length} résultat${students.length > 1 ? "s" : ""}`} />
-        <Link
-          href="/students/new"
-          className="rounded-2xl bg-accent px-5 py-3 font-medium text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95"
-        >
-          + Nouvelle inscription
-        </Link>
+        <div className="flex flex-wrap items-start gap-3">
+          <ExportButton resource="students" params={{ q: query, level, status }} label="Exporter les élèves" />
+          <Link
+            href="/students/new"
+            className="rounded-2xl bg-accent px-5 py-3 font-medium text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95"
+          >
+            + Nouvelle inscription
+          </Link>
+        </div>
       </div>
 
       <nav aria-label="Filtrer par niveau" className="mb-3 flex gap-2 overflow-x-auto pb-1">

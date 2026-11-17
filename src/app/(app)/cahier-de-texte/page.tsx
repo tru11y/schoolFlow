@@ -7,6 +7,7 @@ import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { DeleteButton } from "@/presentation/components/delete-button";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { ExportButton } from "@/presentation/components/export-button";
 import { deleteLogbookEntry } from "./actions";
 import { LogbookForm, type LogbookInitial } from "./logbook-form";
 import { loadReadableLevels, loadWriteScopes } from "./scopes";
@@ -117,7 +118,10 @@ export default async function LogbookPage({ searchParams }: { searchParams: Prom
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle title="Cahier de texte" subtitle="Le déroulé des cours et les devoirs, classe par classe" />
-        {composer}
+        <div className="flex flex-wrap items-start gap-3">
+          <ExportButton resource="logbook" params={{ level, subject: q.subject }} label="Exporter le cahier" />
+          {composer}
+        </div>
       </div>
 
       {readable.length > 1 ? (

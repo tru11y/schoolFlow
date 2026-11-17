@@ -5,6 +5,7 @@ import { listLevels } from "@/infrastructure/db/levels";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { ExportButton } from "@/presentation/components/export-button";
 import { CreateUser } from "./create-user";
 import { UserActions } from "./user-actions";
 
@@ -57,7 +58,10 @@ export default async function UsersPage({
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle title="Utilisateurs" subtitle={`${users.length} compte${users.length > 1 ? "s" : ""}`} />
-        <CreateUser levels={levels.map((l) => l.name)} roles={creatable} students={students.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}` }))} />
+        <div className="flex flex-wrap items-start gap-3">
+          <ExportButton resource="users" params={{ q: query, role, status }} label="Exporter les comptes" />
+          <CreateUser levels={levels.map((l) => l.name)} roles={creatable} students={students.map((s) => ({ id: s.id, name: `${s.firstName} ${s.lastName}` }))} />
+        </div>
       </div>
 
       <form method="get" role="search" className="mb-4 flex flex-wrap gap-3">

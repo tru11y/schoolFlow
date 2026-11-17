@@ -6,6 +6,14 @@ export const text = (max: number) => z.string().trim().min(1).max(max);
 const optional = (max: number) =>
   z.string().trim().max(max).optional().transform((v) => v || undefined);
 
+/** Optional tuition amount in major units ("12000", "120,50"). Empty string = no custom fee. */
+export const feeField = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v ? v.replace(",", ".") : ""))
+  .refine((v) => v === "" || (Number.isFinite(Number(v)) && Number(v) >= 0), { message: "Montant invalide" });
+
 export const parentSchema = z
   .object({
     name: text(100),
