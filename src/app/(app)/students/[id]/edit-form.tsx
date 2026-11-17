@@ -21,12 +21,14 @@ interface Props {
     neighborhood: string;
     commune: string;
     city: string;
+    monthlyFee: string;
   };
   parents: ParentValue[];
   levels: string[];
+  currency: string;
 }
 
-export function EditForm({ id, initial, parents, levels }: Props) {
+export function EditForm({ id, initial, parents, levels, currency }: Props) {
   const [pending, start] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
@@ -68,6 +70,10 @@ export function EditForm({ id, initial, parents, levels }: Props) {
         <select name="status" defaultValue={initial.status} className={field}>
           {ENROLLMENT_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
         </select>
+      </label>
+      <label className="grid gap-1 text-sm sm:col-span-2">Mensualité personnalisée ({currency})
+        <input name="monthlyFee" defaultValue={initial.monthlyFee} inputMode="decimal" placeholder="Laisser vide = tarif de la classe" className={field} />
+        <span className="text-xs text-ink/60">Remplace le tarif du niveau pour cet élève (bourse, fratrie, tarif spécial).</span>
       </label>
       <label className="grid gap-1 text-sm sm:col-span-2">École d&apos;origine
         <input name="previousSchool" defaultValue={initial.previousSchool} maxLength={100} className={field} />

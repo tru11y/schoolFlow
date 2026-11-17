@@ -7,6 +7,7 @@ import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { Badge, Card, PageTitle, StatCard } from "@/presentation/components/ui";
+import { ExportButton } from "@/presentation/components/export-button";
 import { GenerateButton, PayDialog } from "./compta-controls";
 import { DangerZone } from "./danger-zone";
 import { InvoiceRowActions } from "./invoice-row-actions";
@@ -79,12 +80,15 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle title="Comptabilité" subtitle={`Mensualités, arriérés et reçus certifiés · ${periodLabel(periodOf(local.date))}`} />
-        {canWrite ? (
-          <div className="flex flex-wrap items-start gap-3">
-            <GenerateButton />
-            <PayDialog students={summaries} currency={symbol} defaultDescription={`Mensualité ${periodLabel(periodOf(local.date))}`} />
-          </div>
-        ) : null}
+        <div className="flex flex-wrap items-start gap-3">
+          <ExportButton resource="invoices" label="Exporter les factures" />
+          {canWrite ? (
+            <>
+              <GenerateButton />
+              <PayDialog students={summaries} currency={symbol} defaultDescription={`Mensualité ${periodLabel(periodOf(local.date))}`} />
+            </>
+          ) : null}
+        </div>
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -174,7 +178,10 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
         </table>
       </Card>
 
-      <h2 className="mb-3 mt-8 text-lg font-semibold">Derniers paiements</h2>
+      <div className="mb-3 mt-8 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Derniers paiements</h2>
+        <ExportButton resource="payments" label="Exporter les paiements" />
+      </div>
       <Card className="overflow-x-auto p-2 sm:p-4">
         <table className="w-full min-w-[720px] text-left text-sm">
           <caption className="sr-only">Derniers paiements</caption>

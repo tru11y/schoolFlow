@@ -41,7 +41,7 @@ function readParents(fd: FormData) {
   );
 }
 
-export function EnrollForm({ levels }: { levels: string[] }) {
+export function EnrollForm({ levels, currency }: { levels: string[]; currency: string }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -111,6 +111,9 @@ export function EnrollForm({ levels }: { levels: string[] }) {
             </select>
           </Field>
           <Field label="École d'origine" errors={fieldErrors.previousSchool}><input name="previousSchool" maxLength={100} className={field} /></Field>
+          <Field label={`Mensualité personnalisée (${currency})`} errors={fieldErrors.monthlyFee} className="sm:col-span-2">
+            <input name="monthlyFee" inputMode="decimal" placeholder="Laisser vide = tarif de la classe" className={field} />
+          </Field>
         </div>
       </Section>
 

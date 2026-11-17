@@ -6,6 +6,7 @@ import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { DeleteButton } from "@/presentation/components/delete-button";
 import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { ExportButton } from "@/presentation/components/export-button";
 import { deleteAttendanceSession } from "./actions";
 
 const LABELS = { PRESENT: "Présent", ABSENT: "Absent", LATE: "Retard" } as const;
@@ -33,12 +34,15 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
       <>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <PageTitle title="Absences" subtitle="Appels du jour" />
+          <div className="flex flex-wrap items-start gap-3">
+          <ExportButton resource="attendance" params={{ level }} label="Exporter les présences" />
           <Link
             href="/absences/take"
             className="min-h-11 rounded-2xl bg-accent px-5 py-3 font-medium text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95"
           >
             Faire l&apos;appel
           </Link>
+          </div>
         </div>
         <nav aria-label="Filtrer par niveau" className="mb-4 flex gap-2 overflow-x-auto pb-1">
           {[{ id: "all", name: "" }, ...levels].map((l) => (
