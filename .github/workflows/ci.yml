@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Placeholders only: nothing is contacted at typecheck/test/build time.
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+  SESSION_SECRET: ci-placeholder-session-secret-32-characters
+  AUDIT_HMAC_KEY: ci-placeholder-audit-hmac-key-32-characters
+  APP_URL: http://localhost:3000
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm run test
+
+      - name: Build
+        run: npm run build
