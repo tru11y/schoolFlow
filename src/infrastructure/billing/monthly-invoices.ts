@@ -25,7 +25,7 @@ export async function generateMonthlyInvoices(schoolId: string, now: Date = new 
   const [students, levels, existing] = await Promise.all([
     prisma.user.findMany({
       where: { schoolId, role: "STUDENT", deletedAt: null, isActive: true, profile: { status: "ACTIVE" } },
-      select: { id: true, profile: { select: { level: true } } },
+      select: { id: true, profile: { select: { level: true, monthlyFeeCents: true } } },
     }),
     prisma.gradeLevel.findMany({ where: { schoolId } }),
     prisma.invoice.findMany({ where: { schoolId, period }, select: { studentId: true } }),
@@ -40,8 +40,9 @@ export async function generateMonthlyInvoices(schoolId: string, now: Date = new 
       result.alreadyBilled++;
       continue;
     }
-    const fee = fees.get(student.profile?.level ?? "");
-    if (!fee) {
+    // A per-student override (even lower than the level fee) wins; otherwise fall back to the level fee.
+    const fee = student.profile?.monthlyFeeCents ?? fees.get(student.profile?.level ?? "");
+    if (!fee || fee <= 0) {
       result.skippedNoFee++;
       continue;
     }

@@ -61,6 +61,8 @@ model StudentProfile {
   neighborhood   String?
   commune        String?
   city           String?
+  /// Per-student monthly tuition in minor units; overrides the level fee when set.
+  monthlyFeeCents Int?
   status    EnrollmentStatus @default(ACTIVE)
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
@@ -314,7 +316,10 @@ model Invoice {
   /// Set on an old invoice whose remaining balance was folded into a newer one (excluded from balances).
   carriedToInvoiceId String?       @db.Uuid
   createdAt          DateTime      @default(now())
+  /// Soft delete: the row stays for the audit trail but no longer counts anywhere.
   deletedAt          DateTime?
+  deletedById        String?       @db.Uuid
+  deleteReason       String?
 
   @@unique([studentId, period])
   @@index([schoolId, status])
