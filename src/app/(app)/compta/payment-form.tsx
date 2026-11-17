@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { recordPayment } from "./actions";
+import { StudentCombobox } from "./student-combobox";
 import type { PayerSummary } from "./summaries";
 
 const METHODS = [
@@ -73,12 +74,9 @@ export function PaymentForm({ students, currency, defaultDescription, preselect,
       }
       className="grid gap-4"
     >
-      <label className="grid gap-1 text-sm">Élève
-        <select name="studentId" required value={studentId} onChange={(e) => pick(e.target.value)} className={field}>
-          <option value="" disabled>Choisir un élève…</option>
-          {students.map((s) => <option key={s.id} value={s.id}>{s.name}{s.level ? ` · ${s.level}` : ""}</option>)}
-        </select>
-      </label>
+      <div className="grid gap-1 text-sm">Élève
+        <StudentCombobox students={students} value={studentId} onChange={pick} />
+      </div>
 
       {student ? (
         <dl className="grid grid-cols-3 gap-2 text-sm" aria-live="polite">
