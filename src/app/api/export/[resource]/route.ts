@@ -60,17 +60,30 @@ const RESOURCES: Record<string, Resource> = {
         select: {
           firstName: true, lastName: true, email: true, createdAt: true,
           profile: { select: { level: true, status: true, monthlyFeeCents: true } },
+          parents: {
+            orderBy: { position: "asc" },
+            select: { name: true, relation: true, phone: true, email: true },
+          },
         },
       });
       const currency = await getSchoolCurrency(principal.schoolId);
       return {
-        headers: ["Nom", "Prénom", "E-mail", "Classe", "Statut", "Mensualité", "Inscrit le"],
-        rows: students.map((s) => [
-          s.lastName, s.firstName, s.email, s.profile?.level ?? "",
-          s.profile ? STATUS_LABELS[s.profile.status] : "",
-          s.profile?.monthlyFeeCents != null ? formatMoney(s.profile.monthlyFeeCents, currency, "code") : "Tarif classe",
-          s.createdAt,
-        ]),
+        headers: [
+          "Nom", "Prénom", "E-mail", "Classe", "Statut", "Mensualité", "Inscrit le",
+          "Parent 1", "Lien 1", "Téléphone 1", "E-mail 1",
+          "Parent 2", "Lien 2", "Téléphone 2", "E-mail 2",
+        ],
+        rows: students.map((s) => {
+          const [p1, p2] = s.parents;
+          return [
+            s.lastName, s.firstName, s.email, s.profile?.level ?? "",
+            s.profile ? STATUS_LABELS[s.profile.status] : "",
+            s.profile?.monthlyFeeCents != null ? formatMoney(s.profile.monthlyFeeCents, currency, "code") : "Tarif classe",
+            s.createdAt,
+            p1?.name ?? "", p1?.relation ?? "", p1?.phone ?? "", p1?.email ?? "",
+            p2?.name ?? "", p2?.relation ?? "", p2?.phone ?? "", p2?.email ?? "",
+          ];
+        }),
       };
     },
   },
