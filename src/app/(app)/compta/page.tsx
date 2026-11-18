@@ -3,6 +3,7 @@ import { localParts } from "@/core/domain/attendance/policy";
 import { effectiveStatus, periodLabel, periodOf, remaining, type InvoiceStatusValue } from "@/core/domain/finance/billing";
 import { CURRENCIES, formatMoney } from "@/core/domain/finance/money";
 import { can } from "@/core/domain/rbac/role";
+import { financeStudentScope, studentScopeWhere } from "@/core/application/finance/student-scope";
 import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
@@ -50,20 +51,23 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
   const today = new Date(local.date);
   const monthStart = new Date(`${periodOf(local.date)}-01T00:00:00.000Z`);
 
+  const scope = await financeStudentScope(db, principal);
+  const scopeWhere = studentScopeWhere(scope);
+
   const [invoices, payments, collected, summaries] = await Promise.all([
     db.invoice.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ...scopeWhere },
       orderBy: [{ dueDate: "desc" }, { createdAt: "desc" }],
       take: 500,
       include: { student: { select: { firstName: true, lastName: true } } },
     }),
     db.payment.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ...scopeWhere },
       orderBy: { paidAt: "desc" },
       take: 8,
       include: { student: { select: { firstName: true, lastName: true } } },
     }),
-    db.payment.aggregate({ _sum: { amountCents: true }, where: { deletedAt: null, paidAt: { gte: monthStart } } }),
+    db.payment.aggregate({ _sum: { amountCents: true }, where: { deletedAt: null, ...scopeWhere, paidAt: { gte: monthStart } } }),
     canWrite ? loadPayerSummaries(db, currency) : Promise.resolve([]),
   ]);
 
@@ -81,7 +85,7 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
       <div className="flex flex-wrap items-start justify-between gap-4">
         <PageTitle title="Comptabilité" subtitle={`Mensualités, arriérés et reçus certifiés · ${periodLabel(periodOf(local.date))}`} />
         <div className="flex flex-wrap items-start gap-3">
-          <ExportButton resource="invoices" label="Exporter les factures" />
+          {scope.all ? <ExportButton resource="invoices" label="Exporter les factures" /> : null}
           {canWrite ? (
             <PayDialog students={summaries} currency={symbol} defaultDescription={`Mensualité ${periodLabel(periodOf(local.date))}`} />
           ) : null}
