@@ -2,6 +2,7 @@ import { localParts } from "@/core/domain/attendance/policy";
 import { effectiveStatus, remaining } from "@/core/domain/finance/billing";
 import { formatMoney } from "@/core/domain/finance/money";
 import { ForbiddenError } from "@/core/domain/errors";
+import { financeStudentScope } from "@/core/application/finance/student-scope";
 import { toCsv } from "@/core/domain/export/csv";
 import { ROLES, type Permission, type Role } from "@/core/domain/rbac/role";
 import { ROLE_LABELS } from "@/core/domain/rbac/user-management";
@@ -90,6 +91,8 @@ const RESOURCES: Record<string, Resource> = {
   invoices: {
     permission: "finance:read",
     async build(db, principal) {
+      const scope = await financeStudentScope(db, principal);
+      if (!scope.all) throw new ForbiddenError("finance:read");
       const currency = await getSchoolCurrency(principal.schoolId);
       const today = new Date(localParts(new Date()).date);
       const invoices = await db.invoice.findMany({
@@ -112,6 +115,8 @@ const RESOURCES: Record<string, Resource> = {
   payments: {
     permission: "finance:read",
     async build(db, principal) {
+      const scope = await financeStudentScope(db, principal);
+      if (!scope.all) throw new ForbiddenError("finance:read");
       const currency = await getSchoolCurrency(principal.schoolId);
       const payments = await db.payment.findMany({
         where: { deletedAt: null },
@@ -260,15 +265,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ resource
   if (!resource) return new Response("Not found", { status: 404 });
 
   let principal: Principal;
+  let headers: string[];
+  let rows: unknown[][];
   try {
     principal = await requirePermission(resource.permission);
+    const search = new URL(req.url).searchParams;
+    ({ headers, rows } = await resource.build(tenantPrisma(principal), principal, search));
   } catch (err) {
     if (err instanceof ForbiddenError) return new Response("Forbidden", { status: 403 });
     throw err;
   }
-
-  const search = new URL(req.url).searchParams;
-  const { headers, rows } = await resource.build(tenantPrisma(principal), principal, search);
 
   await container().audit.record({
     schoolId: principal.schoolId, actorId: principal.userId, actorRole: principal.role,
