@@ -1,8 +1,30 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { TrendingDown, TrendingUp, type LucideIcon } from "lucide-react";
+import {
+  BookOpen,
+  Clock,
+  CreditCard,
+  GraduationCap,
+  Hand,
+  Receipt,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+
+/** Server components can't pass a component across the client boundary, so StatCard takes a key. */
+const STAT_ICONS = {
+  graduation: GraduationCap,
+  hand: Hand,
+  book: BookOpen,
+  card: CreditCard,
+  wallet: Wallet,
+  receipt: Receipt,
+  trending: TrendingUp,
+  clock: Clock,
+} as const;
 
 export function Card({ children, className = "", id }: { children: ReactNode; className?: string; id?: string }) {
   return <section id={id} className={`rounded-3xl bg-surface p-6 shadow-soft ring-1 ring-ink/5 ${className}`}>{children}</section>;
@@ -18,13 +40,13 @@ const TONES = {
 export function StatCard(props: {
   label: string;
   value: string;
-  icon: LucideIcon;
+  icon: keyof typeof STAT_ICONS;
   tone: keyof typeof TONES;
   index?: number;
   trend?: { value: number; label?: string };
   hint?: string;
 }) {
-  const Icon = props.icon;
+  const Icon = STAT_ICONS[props.icon];
   const t = props.trend;
   const up = t ? t.value >= 0 : false;
   return (

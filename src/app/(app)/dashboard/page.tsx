@@ -12,7 +12,6 @@ import { topRoiActions } from "@/core/domain/copilot/roi";
 import { loadGrowth } from "@/infrastructure/copilot/growth-service";
 import { RoiPanel, TodayPanel } from "@/presentation/components/copilot-cards";
 import { SummaryCard } from "@/app/(app)/ai-assistant/growth/summary-card";
-import { BookOpen, CreditCard, GraduationCap, Hand } from "lucide-react";
 import { Card, MiniBars, PageTitle, StatCard } from "@/presentation/components/ui";
 
 const todayUtc = () => new Date(localParts(new Date()).date);
@@ -67,18 +66,18 @@ export default async function DashboardPage() {
     <>
       <PageTitle title="Tableau de bord" subtitle="Vue d'ensemble de votre établissement" />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard index={0} icon={GraduationCap} tone="sky" label="Élèves inscrits" value={String(students)} />
+        <StatCard index={0} icon="graduation" tone="sky" label="Élèves inscrits" value={String(students)} />
         <StatCard
           index={1}
-          icon={Hand}
+          icon="hand"
           tone="peach"
           label="Taux de présence du jour"
           value={recorded === 0 ? "—" : `${Math.round((present / recorded) * 100)} %`}
           hint={recorded === 0 ? "Aucun appel aujourd'hui" : `${present}/${recorded} présents`}
         />
-        <StatCard index={2} icon={BookOpen} tone="lilac" label="Séances au cahier de texte" value={String(homeworks)} />
+        <StatCard index={2} icon="book" tone="lilac" label="Séances au cahier de texte" value={String(homeworks)} />
         {pending ? (
-          <StatCard index={3} icon={CreditCard} tone="mint" label="Impayés" value={formatMoney(pending.reduce((sum, i) => sum + remaining(i), 0), currency)} />
+          <StatCard index={3} icon="card" tone="mint" label="Impayés" value={formatMoney(pending.reduce((sum, i) => sum + remaining(i), 0), currency)} />
         ) : null}
       </div>
 
