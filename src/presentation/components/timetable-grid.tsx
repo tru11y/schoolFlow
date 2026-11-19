@@ -25,7 +25,9 @@ export function TimetableGrid({ slots, className = "" }: { slots: GridSlot[]; cl
   const hours = Array.from({ length: to - from }, (_, i) => from + i);
 
   return (
-    <div className={`overflow-x-auto ${className}`}>
+    <>
+      <TimetableAgenda slots={slots} days={days} className={`sm:hidden print:hidden ${className}`} />
+      <div className={`hidden overflow-x-auto sm:block print:block ${className}`}>
       <div className="grid min-w-[640px]" style={{ gridTemplateColumns: `3.5rem repeat(${days}, minmax(0, 1fr))` }}>
         <div />
         {WEEKDAYS.slice(0, days).map((d) => (
@@ -62,18 +64,25 @@ export function TimetableGrid({ slots, className = "" }: { slots: GridSlot[]; cl
               .map((s) => {
                 const top = ((toMinutes(s.startTime) - from * 60) / 60) * HOUR_PX;
                 const height = ((toMinutes(s.endTime) - toMinutes(s.startTime)) / 60) * HOUR_PX;
+                const span = Math.max(height - 3, 22);
+                const compact = span < 44; // moins d'une heure : tout sur peu de place
                 return (
                   <div
                     key={s.id}
-                    className={`absolute inset-x-1.5 overflow-hidden rounded-2xl px-2.5 py-1.5 text-left text-xs shadow-sm ring-1 ring-black/5 ${subjectTone(s.subject)}`}
-                    style={{ top: top + 2, height: Math.max(height - 3, 22) }}
+                    className={`absolute inset-x-1.5 flex flex-col gap-0.5 overflow-hidden rounded-2xl px-2.5 py-1.5 text-left shadow-sm ring-1 ring-black/5 dark:ring-white/10 ${compact ? "justify-center" : ""} ${subjectTone(s.subject)}`}
+                    style={{ top: top + 2, height: span }}
+                    title={s.subject}
                   >
-                    <span className="block truncate text-[13px] font-semibold leading-tight">{s.subject}</span>
-                    <span className="block truncate text-[11px] opacity-70">
+                    <span
+                      className={`font-semibold leading-tight tracking-tight ${compact ? "truncate text-[12px]" : "break-words text-[13px]"}`}
+                    >
+                      {s.subject}
+                    </span>
+                    <span className="block truncate text-[11px] tabular-nums opacity-70">
                       {s.startTime}–{s.endTime}
                       {s.room ? ` · ${s.room}` : ""}
                     </span>
-                    {height > 58 && s.teacherName ? (
+                    {span > 72 && s.teacherName ? (
                       <span className="block truncate text-[11px] opacity-70">{s.teacherName}</span>
                     ) : null}
                   </div>
@@ -82,6 +91,51 @@ export function TimetableGrid({ slots, className = "" }: { slots: GridSlot[]; cl
           </div>
         ))}
       </div>
+      </div>
+    </>
+  );
+}
+
+/** Vue mobile : agenda vertical groupé par jour (la grille horaire scrolle mal sur petit écran). */
+function TimetableAgenda({ slots, days, className = "" }: { slots: GridSlot[]; days: number; className?: string }) {
+  return (
+    <div className={`flex flex-col gap-5 ${className}`}>
+      {Array.from({ length: days }, (_, d) => {
+        const daySlots = slots
+          .filter((s) => s.weekday === d + 1)
+          .sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime));
+        return (
+          <section key={d}>
+            <h3 className="mb-2 text-[13px] font-semibold tracking-tight text-ink/80">{WEEKDAYS[d]}</h3>
+            {daySlots.length ? (
+              <ul className="flex flex-col gap-2">
+                {daySlots.map((s) => (
+                  <li
+                    key={s.id}
+                    className={`flex items-start gap-3 rounded-2xl px-3 py-2.5 ring-1 ring-black/5 dark:ring-white/10 ${subjectTone(s.subject)}`}
+                  >
+                    <span className="w-14 shrink-0 pt-0.5 text-[11px] font-medium tabular-nums leading-tight opacity-70">
+                      {s.startTime}
+                      <br />
+                      {s.endTime}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block break-words text-[14px] font-semibold leading-tight tracking-tight">{s.subject}</span>
+                      {s.room || s.teacherName ? (
+                        <span className="mt-0.5 block text-[12px] opacity-70">
+                          {[s.room, s.teacherName].filter(Boolean).join(" · ")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[13px] text-ink/40">—</p>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }
