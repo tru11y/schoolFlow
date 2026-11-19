@@ -105,9 +105,11 @@ function LevelPanel({ level, allLevels, teachers }: { level: LevelData; allLevel
 function SlotEditor({ level, slots, allLevels, teachers }: { level: string; slots: GridSlot[]; allLevels: string[]; teachers: TeacherOption[] }) {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
+  const deleteDialog = useRef<HTMLDialogElement>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<GridSlot | null>(null);
+  const [toDelete, setToDelete] = useState<GridSlot | null>(null);
   const days = slots.some((s) => s.weekday >= 7) ? 7 : slots.some((s) => s.weekday >= 6) ? 6 : 5;
 
   const open = (slot: GridSlot | null) => {
@@ -142,10 +144,19 @@ function SlotEditor({ level, slots, allLevels, teachers }: { level: string; slot
       router.refresh();
     });
 
-  const remove = (slot: GridSlot) =>
+  const askRemove = (slot: GridSlot) => {
+    setToDelete(slot);
+    deleteDialog.current?.showModal();
+  };
+  const confirmRemove = () =>
     start(async () => {
-      const res = await deleteSlot({ slotId: slot.id });
-      if (res.ok) router.refresh();
+      if (!toDelete) return;
+      const res = await deleteSlot({ slotId: toDelete.id });
+      if (res.ok) {
+        deleteDialog.current?.close();
+        setToDelete(null);
+        router.refresh();
+      }
     });
 
   const teacherName = (id?: string | null) => teachers.find((t) => t.id === id)?.name ?? "—";
@@ -182,7 +193,7 @@ function SlotEditor({ level, slots, allLevels, teachers }: { level: string; slot
                 <td className="px-3 py-2">
                   <div className="flex items-center justify-end gap-1">
                     <button onClick={() => open(s)} aria-label="Modifier le créneau" title="Modifier" className={iconButton}>✏️</button>
-                    <button onClick={() => remove(s)} disabled={pending} aria-label="Supprimer le créneau" title="Supprimer" className={`${iconButton} text-danger`}>🗑️</button>
+                    <button onClick={() => askRemove(s)} aria-label="Supprimer le créneau" title="Supprimer" className={`${iconButton} text-danger`}>🗑️</button>
                   </div>
                 </td>
               </tr>
@@ -199,7 +210,7 @@ function SlotEditor({ level, slots, allLevels, teachers }: { level: string; slot
         onClick={(e) => e.target === dialog.current && close()}
         className="m-auto max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-3xl bg-surface p-0 text-left text-ink shadow-soft backdrop:bg-black/60"
       >
-        <form className="grid gap-4 p-6" action={submit}>
+        <form key={editing?.id ?? "new"} className="grid gap-4 p-6" action={submit}>
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">{editing ? "Modifier le créneau" : "Ajouter un créneau"}</h2>
             <button type="button" onClick={close} aria-label="Fermer" className="min-h-9 rounded-xl px-3 hover:bg-raised">✕</button>
@@ -239,6 +250,24 @@ function SlotEditor({ level, slots, allLevels, teachers }: { level: string; slot
             {pending ? "Enregistrement…" : editing ? "Enregistrer" : "Ajouter"}
           </button>
         </form>
+      </dialog>
+
+      <dialog
+        ref={deleteDialog}
+        onClick={(e) => e.target === deleteDialog.current && deleteDialog.current?.close()}
+        className="m-auto w-[min(92vw,26rem)] rounded-3xl bg-surface p-6 text-ink shadow-soft backdrop:bg-black/60"
+      >
+        <h2 className="text-lg font-semibold">Confirmer la suppression</h2>
+        <p className="mt-3 text-sm text-ink/80">
+          Supprimer définitivement le créneau
+          {toDelete ? ` ${WEEKDAYS[toDelete.weekday - 1] ?? ""} ${toDelete.startTime}–${toDelete.endTime} · ${toDelete.subject}` : ""} ?
+        </p>
+        <div className="mt-5 flex justify-end gap-3">
+          <button type="button" onClick={() => deleteDialog.current?.close()} className="min-h-10 rounded-2xl px-4 text-sm ring-1 ring-ink/15 hover:bg-raised">Annuler</button>
+          <button type="button" disabled={pending} onClick={confirmRemove} className="min-h-10 rounded-2xl bg-danger px-4 text-sm font-semibold text-canvas outline-none focus-visible:ring-2 focus-visible:ring-ink active:scale-95 disabled:opacity-60">
+            {pending ? "…" : "Supprimer"}
+          </button>
+        </div>
       </dialog>
     </div>
   );

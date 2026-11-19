@@ -41,6 +41,7 @@ export function Timetable({ studentId, level, slots, teachers, chapters }: Props
   const [error, setError] = useState<string | null>(null);
   const [startTime, setStartTime] = useState("08:30");
   const [endTime, setEndTime] = useState("10:00");
+  const [confirmDel, setConfirmDel] = useState(false);
 
   const days = slots.some((s) => s.weekday >= 6) ? 6 : 5;
   const { from, to } = hourRange(slots);
@@ -50,10 +51,11 @@ export function Timetable({ studentId, level, slots, teachers, chapters }: Props
     setEditing(slot);
     setStartTime(slot?.startTime ?? "08:30");
     setEndTime(slot?.endTime ?? "10:00");
+    setConfirmDel(false);
     setError(null);
     dialog.current?.showModal();
   };
-  const close = () => dialog.current?.close();
+  const close = () => { setConfirmDel(false); dialog.current?.close(); };
 
   return (
     <div>
@@ -185,20 +187,30 @@ export function Timetable({ studentId, level, slots, teachers, chapters }: Props
           {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
           <div className="mt-2 flex items-center justify-between gap-3">
             {editing ? (
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() =>
-                  start(async () => {
-                    const res = await deleteSlot({ id: editing.id, studentId });
-                    if (res.ok) close();
-                    else setError(res.error.message);
-                  })
-                }
-                className="rounded-2xl px-4 py-2 text-sm text-danger hover:bg-danger/10"
-              >
-                Supprimer
-              </button>
+              confirmDel ? (
+                <span className="flex items-center gap-2 text-sm">
+                  <span className="text-ink/70">Confirmer ?</span>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      start(async () => {
+                        const res = await deleteSlot({ id: editing.id, studentId });
+                        if (res.ok) close();
+                        else setError(res.error.message);
+                      })
+                    }
+                    className="rounded-2xl bg-danger px-4 py-2 font-semibold text-canvas disabled:opacity-60"
+                  >
+                    {pending ? "…" : "Supprimer"}
+                  </button>
+                  <button type="button" onClick={() => setConfirmDel(false)} className="rounded-2xl px-3 py-2 text-ink/80 hover:bg-raised">Annuler</button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setConfirmDel(true)} className="rounded-2xl px-4 py-2 text-sm text-danger hover:bg-danger/10">
+                  Supprimer
+                </button>
+              )
             ) : <span />}
             <div className="flex gap-2">
               <button type="button" onClick={close} className="rounded-2xl px-4 py-2 text-sm text-ink/80 hover:bg-raised">Annuler</button>
