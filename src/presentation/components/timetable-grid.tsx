@@ -8,6 +8,7 @@ export interface GridSlot {
   endTime: string;
   subject: string;
   room?: string | null;
+  teacherId?: string | null;
   teacherName?: string | null;
 }
 
