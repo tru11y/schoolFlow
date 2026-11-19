@@ -18,6 +18,7 @@ export function Sidebar({ items, schoolName, hasLogo }: { items: NavItem[]; scho
     .sort((x, y) => y.href.length - x.href.length)[0]?.href;
   return (
     <nav
+      data-chrome
       aria-label="Navigation principale"
       className="flex gap-2 overflow-x-auto bg-surface p-3 md:w-64 md:shrink-0 md:flex-col md:overflow-visible md:p-5"
     >

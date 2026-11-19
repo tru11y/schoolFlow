@@ -1,64 +1,61 @@
-import { WEEKDAY_LABELS } from "@/core/domain/timetable/import";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
 import { ExportButton } from "@/presentation/components/export-button";
-import { Badge, Card, PageTitle } from "@/presentation/components/ui";
+import { Card, PageTitle } from "@/presentation/components/ui";
+import type { GridSlot } from "@/presentation/components/timetable-grid";
 import { ImportTimetable } from "./import-controls";
+import { TimetableAdmin, type LevelData } from "./admin-timetable";
 
 export default async function TimetableImportPage() {
   const principal = await requirePagePermission("user:manage");
   const db = tenantPrisma(principal);
-  const slots = await db.timetableSlot.findMany({
-    where: { studentId: null, level: { not: null } },
-    orderBy: [{ level: "asc" }, { weekday: "asc" }, { startTime: "asc" }],
-    include: { teacher: { select: { firstName: true, lastName: true } } },
-  });
 
-  const byLevel = new Map<string, typeof slots>();
-  for (const s of slots) byLevel.set(s.level!, [...(byLevel.get(s.level!) ?? []), s]);
+  const [slots, gradeLevels, shares] = await Promise.all([
+    db.timetableSlot.findMany({
+      where: { studentId: null, level: { not: null } },
+      orderBy: [{ weekday: "asc" }, { startTime: "asc" }],
+      include: { teacher: { select: { firstName: true, lastName: true } } },
+    }),
+    db.gradeLevel.findMany({ orderBy: { position: "asc" }, select: { name: true, position: true } }),
+    db.timetableShare.findMany({ where: { revokedAt: null }, select: { level: true, token: true } }),
+  ]);
+
+  const order = new Map(gradeLevels.map((g, i) => [g.name, g.position * 1000 + i]));
+  const tokenByLevel = new Map(shares.map((s) => [s.level, s.token]));
+
+  const byLevel = new Map<string, GridSlot[]>();
+  for (const s of slots) {
+    const list = byLevel.get(s.level!) ?? [];
+    list.push({
+      id: s.id, weekday: s.weekday, startTime: s.startTime, endTime: s.endTime,
+      subject: s.subject, room: s.room, teacherName: s.teacher ? `${s.teacher.firstName} ${s.teacher.lastName}` : null,
+    });
+    byLevel.set(s.level!, list);
+  }
+
+  const levels: LevelData[] = [...byLevel.entries()]
+    .map(([name, slots]) => ({ name, slots, token: tokenByLevel.get(name) ?? null }))
+    .sort((a, b) => (order.get(a.name) ?? 1e9) - (order.get(b.name) ?? 1e9));
 
   return (
     <>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageTitle title="Emploi du temps" subtitle="Importez l'emploi du temps des classes depuis votre fichier Excel (.xlsx) ou CSV" />
-        <ExportButton resource="timetable" label="Télécharger le modèle / l'existant" />
+      <div className="flex flex-wrap items-start justify-between gap-4 print-hide">
+        <PageTitle title="Emploi du temps" subtitle="Grille par classe · partage public, export et import Excel/CSV" />
+        <ExportButton resource="timetable" label="Modèle / tout exporter (CSV)" />
       </div>
 
-      <Card className="mb-6">
+      <Card className="mb-6 print-hide">
         <h2 className="mb-1 text-lg font-semibold">Importer</h2>
         <p className="mb-4 text-sm text-ink/70">
-          <strong>Excel (.xlsx)</strong> : déposez directement votre fichier au format grille habituel
-          (blocs « EMPLOI DU TEMPS &lt;classe&gt; », jours en colonnes, matière dans chaque case) — il est lu automatiquement.
-          <br />
-          <strong>CSV</strong> : colonnes <code className="rounded bg-canvas px-1.5 py-0.5">Classe · Jour · Début · Fin · Matière · Enseignant · Salle</code>.
-          Jour = Lundi…Dimanche ou 1…7. Heures au format <code className="rounded bg-canvas px-1.5 py-0.5">HH:MM</code>. Enseignant et Salle facultatifs.
+          <strong>Excel (.xlsx)</strong> au format grille, <strong>CSV</strong>, ou un <strong>lien</strong> (fichier direct, OneDrive, Google Sheets) — lu automatiquement.
         </p>
         <ImportTimetable />
       </Card>
 
-      <h2 className="mb-3 text-lg font-semibold">Emploi du temps actuel · {slots.length} créneaux</h2>
-      <div className="grid gap-4 lg:grid-cols-2">
-        {[...byLevel.entries()].map(([level, list]) => (
-          <Card key={level}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">{level}</h3>
-              <Badge tone="info">{list.length} créneaux</Badge>
-            </div>
-            <ul className="grid gap-1 text-sm">
-              {list.map((s) => (
-                <li key={s.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-canvas px-3 py-2">
-                  <span className="w-20 font-medium">{WEEKDAY_LABELS[s.weekday - 1]}</span>
-                  <span className="tabular-nums text-ink/70">{s.startTime}–{s.endTime}</span>
-                  <span>{s.subject}</span>
-                  {s.teacher ? <span className="text-xs text-ink/60">· {s.teacher.firstName} {s.teacher.lastName}</span> : null}
-                  {s.room ? <span className="text-xs text-ink/60">· {s.room}</span> : null}
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ))}
-        {byLevel.size === 0 ? <Card><p className="text-ink/70">Aucun créneau de classe pour le moment. Importez votre fichier ci-dessus.</p></Card> : null}
-      </div>
+      <h2 className="mb-3 text-lg font-semibold print-hide">
+        Emploi du temps · {slots.length} créneaux{levels.length ? ` · ${levels.length} classes` : ""}
+      </h2>
+      <TimetableAdmin levels={levels} />
     </>
   );
 }

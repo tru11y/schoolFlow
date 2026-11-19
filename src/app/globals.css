@@ -69,3 +69,11 @@ body { background: var(--canvas); color: var(--ink); }
     50% { transform: translate3d(3%, 4%, 0) scale(1.06); }
   }
 }
+
+@media print {
+  :root { --grid-line: rgb(0 0 0 / 0.14); }
+  body { background: #fff !important; }
+  [data-chrome], .print-hide, .print\:hidden { display: none !important; }
+  main { padding: 0 !important; }
+  .shadow-soft { box-shadow: none !important; }
+}

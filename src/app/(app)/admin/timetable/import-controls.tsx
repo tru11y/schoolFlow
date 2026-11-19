@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { importTimetable, importTimetableXlsx, type ImportSummary } from "./actions";
+import { importTimetable, importTimetableXlsx, importTimetableFromUrl, type ImportSummary } from "./actions";
 
 const field =
   "w-full rounded-2xl bg-canvas px-4 py-2.5 text-sm outline-none ring-1 ring-ink/15 focus-visible:ring-2 focus-visible:ring-accent";
@@ -16,6 +16,7 @@ const toBase64 = (buf: ArrayBuffer): string => {
 export function ImportTimetable() {
   const [csv, setCsv] = useState("");
   const [xlsxB64, setXlsxB64] = useState<string | null>(null);
+  const [url, setUrl] = useState("");
   const [replace, setReplace] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -40,11 +41,13 @@ export function ImportTimetable() {
     start(async () => {
       setError(null);
       setSummary(null);
-      const res = xlsxB64
-        ? await importTimetableXlsx({ xlsxBase64: xlsxB64, replace })
-        : await importTimetable({ csv, replace });
+      const res = url.trim()
+        ? await importTimetableFromUrl({ url: url.trim(), replace })
+        : xlsxB64
+          ? await importTimetableXlsx({ xlsxBase64: xlsxB64, replace })
+          : await importTimetable({ csv, replace });
       if (res.ok) setSummary(res.data);
-      else setError(res.error.code === "FORBIDDEN" ? "Fichier illisible : vérifiez le fichier (Excel au format grille, ou CSV avec colonnes Classe, Jour, Début, Fin, Matière)." : res.error.message);
+      else setError(res.error.code === "FORBIDDEN" ? "Source illisible : vérifiez le fichier/lien (Excel au format grille, ou CSV avec colonnes Classe, Jour, Début, Fin, Matière)." : res.error.message);
     });
 
   return (
@@ -75,6 +78,17 @@ export function ImportTimetable() {
         />
       </label>
 
+      <label className="grid gap-1 text-sm">Ou importer depuis un lien (fichier .xlsx/.csv direct, OneDrive ou Google Sheets)
+        <input
+          type="url"
+          inputMode="url"
+          value={url}
+          onChange={(e) => { setUrl(e.target.value); if (e.target.value.trim()) { setCsv(""); setXlsxB64(null); setFileName(null); } }}
+          placeholder="https://…/emploi-du-temps.xlsx"
+          className={field}
+        />
+      </label>
+
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={replace} onChange={(e) => setReplace(e.target.checked)} className="size-5 accent-[oklch(0.85_0.1_165)]" />
         Remplacer l&apos;emploi du temps existant des classes présentes dans le fichier
@@ -82,7 +96,7 @@ export function ImportTimetable() {
 
       <button
         onClick={submit}
-        disabled={pending || (csv.trim() === "" && !xlsxB64)}
+        disabled={pending || (csv.trim() === "" && !xlsxB64 && url.trim() === "")}
         className="min-h-11 w-fit rounded-2xl bg-accent px-5 py-3 font-medium text-canvas outline-none transition focus-visible:ring-2 focus-visible:ring-ink active:scale-95 disabled:opacity-50"
       >
         {pending ? "Import en cours…" : "Importer"}
