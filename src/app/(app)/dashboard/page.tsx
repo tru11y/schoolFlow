@@ -12,9 +12,12 @@ import { topRoiActions } from "@/core/domain/copilot/roi";
 import { loadGrowth } from "@/infrastructure/copilot/growth-service";
 import { RoiPanel, TodayPanel } from "@/presentation/components/copilot-cards";
 import { SummaryCard } from "@/app/(app)/ai-assistant/growth/summary-card";
-import { Card, PageTitle, StatCard } from "@/presentation/components/ui";
+import { BookOpen, CreditCard, GraduationCap, Hand } from "lucide-react";
+import { Card, MiniBars, PageTitle, StatCard } from "@/presentation/components/ui";
 
 const todayUtc = () => new Date(localParts(new Date()).date);
+const DAY_MS = 86_400_000;
+const WEEKDAYS = ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"];
 
 export default async function DashboardPage() {
   const principal = await requireAuth();
@@ -34,33 +37,64 @@ export default async function DashboardPage() {
         }))
       : null;
 
-  const [students, present, recorded, homeworks, pending] = await Promise.all([
+  const today = todayUtc();
+  const weekStart = new Date(today.getTime() - 6 * DAY_MS);
+  const [students, present, recorded, homeworks, pending, weekRecords] = await Promise.all([
     db.user.count({ where: { role: "STUDENT", deletedAt: null } }),
-    db.attendanceRecord.count({ where: { date: todayUtc(), status: "PRESENT" } }),
-    db.attendanceRecord.count({ where: { date: todayUtc() } }),
+    db.attendanceRecord.count({ where: { date: today, status: "PRESENT" } }),
+    db.attendanceRecord.count({ where: { date: today } }),
     db.logbookEntry.count({ where: { deletedAt: null } }),
     showFinance
       ? db.invoice.findMany({ where: { deletedAt: null, carriedToInvoiceId: null }, select: { amountCents: true, paidCents: true } })
       : null,
+    db.attendanceRecord.findMany({
+      where: { date: { gte: weekStart, lte: today } },
+      select: { date: true, status: true },
+    }),
   ]);
+
+  const trend = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart.getTime() + i * DAY_MS);
+    const key = d.getTime();
+    const day = weekRecords.filter((r) => r.date.getTime() === key);
+    const total = day.length;
+    const rate = total === 0 ? 0 : Math.round((day.filter((r) => r.status === "PRESENT").length / total) * 100);
+    return { label: WEEKDAYS[d.getUTCDay()] ?? "", value: rate };
+  });
+  const hasAttendance = trend.some((d) => d.value > 0);
 
   return (
     <>
       <PageTitle title="Tableau de bord" subtitle="Vue d'ensemble de votre établissement" />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard index={0} icon="🎓" tone="sky" label="Élèves inscrits" value={String(students)} />
+        <StatCard index={0} icon={GraduationCap} tone="sky" label="Élèves inscrits" value={String(students)} />
         <StatCard
           index={1}
-          icon="🙋"
+          icon={Hand}
           tone="peach"
           label="Taux de présence du jour"
           value={recorded === 0 ? "—" : `${Math.round((present / recorded) * 100)} %`}
+          hint={recorded === 0 ? "Aucun appel aujourd'hui" : `${present}/${recorded} présents`}
         />
-        <StatCard index={2} icon="📓" tone="lilac" label="Séances au cahier de texte" value={String(homeworks)} />
+        <StatCard index={2} icon={BookOpen} tone="lilac" label="Séances au cahier de texte" value={String(homeworks)} />
         {pending ? (
-          <StatCard index={3} icon="💳" tone="mint" label="Impayés" value={formatMoney(pending.reduce((sum, i) => sum + remaining(i), 0), currency)} />
+          <StatCard index={3} icon={CreditCard} tone="mint" label="Impayés" value={formatMoney(pending.reduce((sum, i) => sum + remaining(i), 0), currency)} />
         ) : null}
       </div>
+
+      {showFinance || hasAttendance ? (
+        <Card className="mt-6">
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="text-lg font-semibold">Présence des 7 derniers jours</h2>
+            <span className="text-xs text-ink/50">taux quotidien (%)</span>
+          </div>
+          {hasAttendance ? (
+            <MiniBars data={trend} tone="peach" />
+          ) : (
+            <p className="py-8 text-center text-sm text-ink/60">Aucun appel enregistré cette semaine.</p>
+          )}
+        </Card>
+      ) : null}
       {copilot ? <RoiPanel actions={copilot.roi} currency={copilot.currency} /> : null}
       {copilot ? (
         <div className="mt-6">

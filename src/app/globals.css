@@ -49,7 +49,19 @@
   --shadow-soft: var(--shadow-soft);
 }
 
-body { background: var(--canvas); color: var(--ink); }
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: var(--accent); color: var(--surface); }
+
+* { scrollbar-width: thin; scrollbar-color: oklch(0.6 0 0 / 0.3) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: oklch(0.6 0 0 / 0.3); border-radius: 9999px; }
+*::-webkit-scrollbar-thumb:hover { background: oklch(0.6 0 0 / 0.5); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

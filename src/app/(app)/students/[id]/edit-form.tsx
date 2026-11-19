@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { ENROLLMENT_STATUSES, STATUS_LABELS, type EnrollmentStatusValue } from "@/core/domain/students/student";
+import { runOrQueue } from "@/presentation/offline/outbox";
 import { updateStudent } from "../actions";
 import { ParentsFields, readParents, type ParentValue } from "../parents-fields";
 
@@ -37,7 +38,13 @@ export function EditForm({ id, initial, parents, levels, currency }: Props) {
     <form
       action={(fd) =>
         start(async () => {
-          const res = await updateStudent({ ...Object.fromEntries(fd), id, parents: readParents(fd) });
+          const payload = { ...Object.fromEntries(fd), id, parents: readParents(fd) };
+          const out = await runOrQueue("/api/students/update", payload, () => updateStudent(payload));
+          if (out.queued) {
+            setInvalid(false);
+            return setMessage("Modifications enregistrées hors-ligne — synchronisées au retour du réseau");
+          }
+          const res = out.res;
           setInvalid(!res.ok && !!res.error.fieldErrors?.parents);
           if (!res.ok) return setMessage(res.error.message);
           setMessage(res.data.status === "matricule_taken" ? "Ce matricule est déjà attribué à un autre élève." : "Modifications enregistrées");
