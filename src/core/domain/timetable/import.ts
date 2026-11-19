@@ -5,6 +5,24 @@ export const WEEKDAY_LABELS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"
 const normalize = (s: string): string =>
   s.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
+/**
+ * Clé canonique d'un niveau, tolérante aux variantes d'écriture, pour faire
+ * correspondre les libellés de l'Excel (`TLE D`, `3E`, `2NDE A`) aux niveaux
+ * enregistrés dans la plateforme (`Terminale D`, `3eme`, `2nde A`).
+ * Combine le degré (T pour terminale, sinon le chiffre) et la série A/C/D.
+ */
+export function levelKey(name: string): string {
+  const n = normalize(name).toUpperCase();
+  let grade = "";
+  if (/\bTLE\b|TERMINAL/.test(n)) grade = "T";
+  else {
+    const d = n.match(/[1-6]/);
+    if (d) grade = d[0];
+  }
+  const serie = n.match(/([ACD])\s*$/);
+  return grade + (serie ? serie[1] : "");
+}
+
 /** "Lundi"/"lun"/"1" → 1 … "Dimanche"/"dim"/"7" → 7. Null when unrecognized. */
 export function parseWeekday(raw: string): number | null {
   const v = normalize(raw);

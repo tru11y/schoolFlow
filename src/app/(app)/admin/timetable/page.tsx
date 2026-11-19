@@ -20,16 +20,18 @@ export default async function TimetableImportPage() {
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <PageTitle title="Emploi du temps" subtitle="Importez l'emploi du temps des classes depuis votre fichier Excel (CSV)" />
+        <PageTitle title="Emploi du temps" subtitle="Importez l'emploi du temps des classes depuis votre fichier Excel (.xlsx) ou CSV" />
         <ExportButton resource="timetable" label="Télécharger le modèle / l'existant" />
       </div>
 
       <Card className="mb-6">
         <h2 className="mb-1 text-lg font-semibold">Importer</h2>
         <p className="mb-4 text-sm text-ink/70">
-          Colonnes attendues : <code className="rounded bg-canvas px-1.5 py-0.5">Classe · Jour · Début · Fin · Matière · Enseignant · Salle</code>.
-          Jour = Lundi…Dimanche ou 1…7. Heures au format <code className="rounded bg-canvas px-1.5 py-0.5">HH:MM</code>.
-          Enseignant et Salle facultatifs. Astuce : téléchargez le modèle pour partir du bon format.
+          <strong>Excel (.xlsx)</strong> : déposez directement votre fichier au format grille habituel
+          (blocs « EMPLOI DU TEMPS &lt;classe&gt; », jours en colonnes, matière dans chaque case) — il est lu automatiquement.
+          <br />
+          <strong>CSV</strong> : colonnes <code className="rounded bg-canvas px-1.5 py-0.5">Classe · Jour · Début · Fin · Matière · Enseignant · Salle</code>.
+          Jour = Lundi…Dimanche ou 1…7. Heures au format <code className="rounded bg-canvas px-1.5 py-0.5">HH:MM</code>. Enseignant et Salle facultatifs.
         </p>
         <ImportTimetable />
       </Card>
