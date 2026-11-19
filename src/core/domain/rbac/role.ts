@@ -25,8 +25,8 @@ export type Permission = (typeof PERMISSIONS)[number];
 const ROLE_PERMISSIONS: Record<Role, ReadonlySet<Permission>> = {
   SUPER_ADMIN: new Set(PERMISSIONS),
   SCHOOL_ADMIN: new Set<Permission>([
-    "user:manage", "finance:read", "payment:manage", "attendance:read", "attendance:write",
-    "homework:read", "homework:write", "chat:use", "audit:read",
+    "user:manage", "finance:read", "finance:write", "payment:manage", "receipt:issue",
+    "attendance:read", "attendance:write", "homework:read", "homework:write", "chat:use", "audit:read",
   ]),
   ACCOUNTANT: new Set<Permission>(["finance:read", "finance:write", "receipt:issue", "chat:use"]),
   TEACHER: new Set<Permission>(["attendance:read", "attendance:write", "homework:read", "homework:write", "chat:use"]),

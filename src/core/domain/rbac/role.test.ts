@@ -29,6 +29,13 @@ describe("rbac", () => {
     }
   });
 
+  it("lets the directeur and accountant record payments", () => {
+    for (const role of ["SUPER_ADMIN", "SCHOOL_ADMIN", "ACCOUNTANT"] as const) {
+      expect(can(role, "finance:write")).toBe(true);
+      expect(can(role, "receipt:issue")).toBe(true);
+    }
+  });
+
   it("restricts chat peers", () => {
     expect(canChat("STUDENT", "PARENT")).toBe(false);
     expect(canChat("STUDENT", "TEACHER")).toBe(true);

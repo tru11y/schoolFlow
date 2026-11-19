@@ -55,6 +55,7 @@ export function PaymentRowActions({ payment, currency, exponent }: Props) {
   const errorOf = (res: Response): string | null => {
     if (!res.ok) return res.error.fieldErrors ? "Vérifiez les champs." : res.error.message;
     if (res.data.status === "not_found") return "Paiement introuvable ou déjà supprimé.";
+    if (res.data.status === "duplicate_month") return `Un paiement existe déjà pour ce mois (${res.data.period}).`;
     if (res.data.status === "overpay") return `Montant supérieur au solde dû (${fmt(res.data.outstandingCents / 10 ** exponent)}).`;
     return null;
   };

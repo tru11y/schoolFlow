@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { localParts } from "@/core/domain/attendance/policy";
 import { effectiveStatus, periodLabel, periodOf, remaining, type InvoiceStatusValue } from "@/core/domain/finance/billing";
@@ -64,8 +65,8 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
     db.payment.findMany({
       where: { deletedAt: null, ...scopeWhere },
       orderBy: { paidAt: "desc" },
-      take: 8,
-      include: { student: { select: { firstName: true, lastName: true } } },
+      take: 500,
+      include: { student: { select: { firstName: true, lastName: true, profile: { select: { level: true } } } } },
     }),
     db.payment.aggregate({ _sum: { amountCents: true }, where: { deletedAt: null, ...scopeWhere, paidAt: { gte: monthStart } } }),
     canWrite ? loadPayerSummaries(db, currency) : Promise.resolve([]),
@@ -79,6 +80,28 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
   const recoveryRate = billed === 0 ? 0 : Math.round(((billed - outstanding) / billed) * 100);
   const overdue = live.filter((r) => r.status === "OVERDUE").reduce((sum, r) => sum + remaining(r.inv), 0);
   const visible = rows.filter((r) => r.carried || matches(filter, r.status));
+
+  // Payments classified by payment month (newest first), then by level inside each month.
+  const paymentGroups = (() => {
+    const map = new Map<string, typeof payments>();
+    for (const p of payments) {
+      const period = p.period ?? periodOf(localParts(p.paidAt).date);
+      const bucket = map.get(period) ?? (map.set(period, []), map.get(period)!);
+      bucket.push(p);
+    }
+    return [...map.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([period, group]) => ({
+        period,
+        total: group.reduce((sum, p) => sum + p.amountCents, 0),
+        rows: [...group].sort(
+          (a, b) =>
+            (a.student.profile?.level ?? "").localeCompare(b.student.profile?.level ?? "") ||
+            b.paidAt.getTime() - a.paidAt.getTime(),
+        ),
+      }));
+  })();
+  const paymentCols = canManagePayments ? 8 : 7;
 
   return (
     <>
@@ -180,16 +203,17 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
       </Card>
 
       <div className="mb-3 mt-8 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Derniers paiements</h2>
+        <h2 className="text-lg font-semibold">Paiements par mois</h2>
         <ExportButton resource="payments" label="Exporter les paiements" />
       </div>
       <Card className="overflow-x-auto p-2 sm:p-4">
-        <table className="w-full min-w-[720px] text-left text-sm">
-          <caption className="sr-only">Derniers paiements</caption>
+        <table className="w-full min-w-[820px] text-left text-sm">
+          <caption className="sr-only">Paiements classés par mois et par niveau</caption>
           <thead className="text-ink/70">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">Date</th>
               <th scope="col" className="px-4 py-3 font-medium">Élève</th>
+              <th scope="col" className="px-4 py-3 font-medium">Niveau</th>
               <th scope="col" className="px-4 py-3 font-medium">Description</th>
               <th scope="col" className="px-4 py-3 font-medium">Mode</th>
               <th scope="col" className="px-4 py-3 text-right font-medium">Montant</th>
@@ -198,38 +222,48 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
             </tr>
           </thead>
           <tbody>
-            {payments.map((p) => (
-              <tr key={p.id} className="border-t border-ink/10">
-                <td className="px-4 py-3 tabular-nums">{p.paidAt.toLocaleDateString("fr-FR")}</td>
-                <td className="px-4 py-3">{p.student.firstName} {p.student.lastName}</td>
-                <td className="px-4 py-3">{p.description}</td>
-                <td className="px-4 py-3">{METHOD_LABELS[p.method]}</td>
-                <td className="px-4 py-3 text-right tabular-nums">{formatMoney(p.amountCents, currency)}</td>
-                <td className="px-4 py-3 text-right">
-                  <a href={`/compta/receipt/${p.id}`} className="rounded-2xl bg-sky/15 px-3 py-1.5 text-sky outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                    Reçu PDF certifié SHA-256
-                  </a>
-                </td>
-                {canManagePayments ? (
-                  <td className="px-4 py-3">
-                    <PaymentRowActions
-                      currency={symbol}
-                      exponent={CURRENCIES[currency].exponent}
-                      payment={{
-                        id: p.id,
-                        amount: p.amountCents / 10 ** CURRENCIES[currency].exponent,
-                        method: p.method,
-                        description: p.description,
-                        paidAt: p.paidAt.toISOString().slice(0, 10),
-                        reference: p.reference,
-                      }}
-                    />
-                  </td>
-                ) : null}
-              </tr>
+            {paymentGroups.map((g) => (
+              <Fragment key={g.period}>
+                <tr className="border-t border-ink/10 bg-raised/40">
+                  <th scope="colgroup" colSpan={5} className="px-4 py-2 text-left font-semibold">{periodLabel(g.period)}</th>
+                  <td className="px-4 py-2 text-right font-semibold tabular-nums">{formatMoney(g.total, currency)}</td>
+                  <td colSpan={canManagePayments ? 2 : 1} />
+                </tr>
+                {g.rows.map((p) => (
+                  <tr key={p.id} className="border-t border-ink/10">
+                    <td className="px-4 py-3 tabular-nums">{p.paidAt.toLocaleDateString("fr-FR")}</td>
+                    <td className="px-4 py-3">{p.student.firstName} {p.student.lastName}</td>
+                    <td className="px-4 py-3">{p.student.profile?.level ?? "—"}</td>
+                    <td className="px-4 py-3">{p.description}</td>
+                    <td className="px-4 py-3">{METHOD_LABELS[p.method]}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{formatMoney(p.amountCents, currency)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <a href={`/compta/receipt/${p.id}`} className="rounded-2xl bg-sky/15 px-3 py-1.5 text-sky outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                        Reçu PDF certifié SHA-256
+                      </a>
+                    </td>
+                    {canManagePayments ? (
+                      <td className="px-4 py-3">
+                        <PaymentRowActions
+                          currency={symbol}
+                          exponent={CURRENCIES[currency].exponent}
+                          payment={{
+                            id: p.id,
+                            amount: p.amountCents / 10 ** CURRENCIES[currency].exponent,
+                            method: p.method,
+                            description: p.description,
+                            paidAt: p.paidAt.toISOString().slice(0, 10),
+                            reference: p.reference,
+                          }}
+                        />
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
+              </Fragment>
             ))}
             {payments.length === 0 ? (
-              <tr><td colSpan={canManagePayments ? 7 : 6} className="px-4 py-8 text-center text-ink/70">Aucun paiement enregistré.</td></tr>
+              <tr><td colSpan={paymentCols} className="px-4 py-8 text-center text-ink/70">Aucun paiement enregistré.</td></tr>
             ) : null}
           </tbody>
         </table>

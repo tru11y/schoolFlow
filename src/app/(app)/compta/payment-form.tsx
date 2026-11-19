@@ -52,15 +52,8 @@ export function PaymentForm({ students, currency, defaultDescription, preselect,
           setMessage(null);
           const res = await recordPayment(Object.fromEntries(fd));
           if (!res.ok) return setMessage({ tone: "error", text: res.error.fieldErrors ? "Vérifiez les champs." : res.error.message });
-          if (res.data.status === "nothing_due") {
-            return setMessage({ tone: "error", text: "Aucun solde à régler : générez d'abord les échéances du mois." });
-          }
-          if (res.data.status === "overpay") {
-            const left = students.find((s) => s.id === studentId);
-            return setMessage({
-              tone: "error",
-              text: `Montant supérieur au solde dû${left ? ` (${fmt(left.balance, currency)})` : ""}.`,
-            });
+          if (res.data.status === "duplicate_month") {
+            return setMessage({ tone: "error", text: `Un paiement est déjà enregistré pour cet élève ce mois-ci (${res.data.period}).` });
           }
           const href = `/compta/receipt/${res.data.paymentId}`;
           setMessage({ tone: "ok", text: "Paiement enregistré. Le reçu PDF se télécharge.", href });

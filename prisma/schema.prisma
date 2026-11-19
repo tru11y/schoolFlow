@@ -345,6 +345,8 @@ model Payment {
   allocations  Json
   /// Free receipt/bank reference typed by the cashier.
   reference    String?
+  /// "YYYY-MM" (local) of paidAt; at most one live payment per student per month.
+  period       String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @default(now()) @updatedAt
   /// Soft delete: the row stays for the audit trail but no longer counts anywhere.
@@ -353,6 +355,7 @@ model Payment {
   deleteReason String?
 
   @@index([schoolId, paidAt])
+  @@index([schoolId, period])
   @@index([studentId])
   @@map("payments")
 }

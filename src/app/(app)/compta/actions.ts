@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
 import {
-  allocatePayment, applyAllocations, openInvoicesOf, remaining, reverseAllocations, statusAfterPayment,
+  allocatePayment, applyAllocations, openInvoicesOf, periodOf, remaining, reverseAllocations, statusAfterPayment,
   type Allocation, type InvoiceState,
 } from "@/core/domain/finance/billing";
 import { toMinorUnits } from "@/core/domain/finance/money";
@@ -20,8 +20,7 @@ import { localParts } from "@/core/domain/attendance/policy";
 
 export type PaymentResult =
   | { status: "ok"; paymentId: string; amountCents: number; allocations: Allocation[] }
-  | { status: "nothing_due" }
-  | { status: "overpay"; outstandingCents: number };
+  | { status: "duplicate_month"; period: string };
 
 const METHODS = ["CASH", "MOBILE_MONEY", "TRANSFER", "CHEQUE"] as const;
 const reference = z.string().trim().max(80).optional().transform((v) => v || null);
@@ -58,6 +57,14 @@ export const recordPayment = secureAction(
     const amountCents = toMinorUnits(input.amount, currency);
     const now = new Date();
     const today = new Date(localParts(now).date);
+    const period = periodOf(localParts(now).date);
+
+    // One payment per student per month: block a second one for the same period.
+    const existing = await db.payment.findFirst({
+      where: { studentId: student.id, deletedAt: null, period },
+      select: { id: true },
+    });
+    if (existing) return { status: "duplicate_month", period };
 
     // Balances never count invoices already folded into a newer one.
     const invoices = await db.invoice.findMany({
@@ -67,24 +74,37 @@ export const recordPayment = secureAction(
     const open = invoices
       .filter((i) => remaining(i) > 0)
       .map((i) => ({ id: i.id, dueDate: i.dueDate, remainingCents: remaining(i) }));
-    if (open.length === 0) return { status: "nothing_due" };
 
     const { allocations, leftoverCents } = allocatePayment(open, amountCents);
+    const byId = new Map(invoices.map((i) => [i.id, i]));
+
+    // No matching échéance (or a surplus beyond the open balance): book an ad-hoc paid invoice
+    // so any amount can be recorded directly without generating a monthly schedule first.
+    let adhoc: { id: string; amountCents: number } | null = null;
     if (leftoverCents > 0) {
-      return { status: "overpay", outstandingCents: open.reduce((sum, i) => sum + i.remainingCents, 0) };
+      adhoc = { id: randomUUID(), amountCents: leftoverCents };
+      allocations.push({ invoiceId: adhoc.id, amountCents: leftoverCents });
     }
 
     const paymentId = randomUUID();
-    const byId = new Map(invoices.map((i) => [i.id, i]));
     await prisma.$transaction([
+      ...(adhoc
+        ? [prisma.invoice.create({
+            data: {
+              id: adhoc.id, schoolId, studentId: student.id, label: input.description,
+              amountCents: adhoc.amountCents, paidCents: adhoc.amountCents, dueDate: today,
+              status: "PAID", paidAt: now,
+            },
+          })]
+        : []),
       prisma.payment.create({
         data: {
           id: paymentId, schoolId, studentId: student.id, amountCents, method: input.method,
-          description: input.description, reference: input.reference, paidAt: now, recordedById: principal.userId, allocations,
+          description: input.description, reference: input.reference, paidAt: now, period, recordedById: principal.userId, allocations,
           receiptHash: receiptHash({ paymentId, schoolId, studentId: student.id, amountCents, paidAt: now }),
         },
       }),
-      ...allocations.map((a) => {
+      ...allocations.filter((a) => a.invoiceId !== adhoc?.id).map((a) => {
         const inv = byId.get(a.invoiceId)!;
         const paidCents = inv.paidCents + a.amountCents;
         const status = statusAfterPayment({ amountCents: inv.amountCents, paidCents, dueDate: inv.dueDate }, today);
@@ -122,6 +142,7 @@ export const generateInvoices = secureAction(
 export type PaymentChangeResult =
   | { status: "ok"; paymentId: string; studentId: string; amountCents: number; actor: { name: string; email: string } }
   | { status: "not_found" }
+  | { status: "duplicate_month"; period: string }
   | { status: "overpay"; outstandingCents: number };
 
 /**
@@ -212,6 +233,14 @@ export const updatePayment = secureAction(
     const amountCents = toMinorUnits(input.amount, currency);
     // A date left untouched keeps the original timestamp so the certified facts do not drift.
     const paidAt = payment.paidAt.toISOString().slice(0, 10) === input.paidAt ? payment.paidAt : new Date(`${input.paidAt}T12:00:00.000Z`);
+    const period = periodOf(localParts(paidAt).date);
+
+    // Keep one payment per student per month: reject a move onto an occupied month.
+    const clash = await db.payment.findFirst({
+      where: { studentId: payment.studentId, deletedAt: null, period, id: { not: payment.id } },
+      select: { id: true },
+    });
+    if (clash) return { status: "duplicate_month", period };
 
     const plan = await rebalance(db, payment, amountCents);
     if ("overpay" in plan) return { status: "overpay", outstandingCents: plan.overpay };
@@ -220,7 +249,7 @@ export const updatePayment = secureAction(
       prisma.payment.update({
         where: { id: payment.id },
         data: {
-          amountCents, method: input.method, description: input.description, reference: input.reference, paidAt,
+          amountCents, method: input.method, description: input.description, reference: input.reference, paidAt, period,
           allocations: plan.allocations,
           receiptHash: receiptHash({ paymentId: payment.id, schoolId: payment.schoolId, studentId: payment.studentId, amountCents, paidAt }),
         },
