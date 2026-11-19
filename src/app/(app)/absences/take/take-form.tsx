@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState, useTransition } from "react";
+import { enqueue } from "@/presentation/offline/outbox";
 import { takeAttendance } from "./actions";
 
 type Status = "PRESENT" | "ABSENT" | "LATE";
@@ -42,16 +43,30 @@ export function TakeForm({ level, timing, students, today }: Props) {
   const submit = () =>
     start(async () => {
       setError(null);
-      const res = await takeAttendance({
-        level,
-        records: Object.entries(values).map(([studentId, status]) => ({ studentId, status })),
-      });
-      if (res.ok && res.data.subject) {
-        const p = new URLSearchParams({ new: "1", level, subject: res.data.subject, date: today, ...(res.data.slotId ? { slot: res.data.slotId } : {}) });
-        setLogbookHref(`/cahier-de-texte?${p}`);
+      const payload = { level, records: Object.entries(values).map(([studentId, status]) => ({ studentId, status })) };
+
+      // Hors-ligne connu : on met en file sans tenter l'appel réseau.
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        await enqueue("/api/attendance/take", payload);
+        setLogbookHref(null);
+        setDone("Appel enregistré hors-ligne — synchronisé au retour du réseau");
+        return;
       }
-      if (res.ok) setDone(res.data.isOverdue ? "Appel enregistré (signalé hors créneau)" : "Appel enregistré");
-      else setError(res.error.message);
+
+      try {
+        const res = await takeAttendance(payload);
+        if (res.ok && res.data.subject) {
+          const p = new URLSearchParams({ new: "1", level, subject: res.data.subject, date: today, ...(res.data.slotId ? { slot: res.data.slotId } : {}) });
+          setLogbookHref(`/cahier-de-texte?${p}`);
+        }
+        if (res.ok) setDone(res.data.isOverdue ? "Appel enregistré (signalé hors créneau)" : "Appel enregistré");
+        else setError(res.error.message);
+      } catch {
+        // Échec réseau pendant l'envoi : on bascule en file hors-ligne.
+        await enqueue("/api/attendance/take", payload);
+        setLogbookHref(null);
+        setDone("Appel enregistré hors-ligne — synchronisé au retour du réseau");
+      }
     });
 
   return (
