@@ -193,6 +193,90 @@ export const importTimetableFromUrl = secureAction(
   },
 );
 
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Heure invalide (HH:MM)");
+const optionalId = z.string().uuid().optional().or(z.literal("")).transform((v) => v || null);
+const optionalText = (max: number) => z.string().trim().max(max).optional().transform((v) => v || null);
+
+const slotShape = {
+  level: z.string().trim().min(1).max(60),
+  weekday: z.coerce.number().int().min(1).max(7),
+  startTime: hhmm,
+  endTime: hhmm,
+  subject: z.string().trim().min(1).max(60),
+  teacherId: optionalId,
+  room: optionalText(40),
+};
+const slotRefine = <T extends { startTime: string; endTime: string }>(o: T) => o.startTime < o.endTime;
+
+export type SlotResult = { status: "ok"; id: string } | { status: "not_found" };
+
+export const createSlot = secureAction(
+  {
+    name: "timetable.slot-create",
+    resource: "timetable",
+    permission: "user:manage",
+    input: z.object(slotShape).refine(slotRefine, { message: "Fin avant début", path: ["endTime"] }),
+    resourceId: (_i, data: SlotResult) => (data.status === "ok" ? data.id : null),
+    auditMetadata: (i) => ({ level: i.level, weekday: i.weekday, subject: i.subject }),
+  },
+  async ({ input, db, principal }): Promise<SlotResult> => {
+    const schoolId = principal.schoolId;
+    if (!schoolId) throw new ForbiddenError("tenant:missing");
+    const slot = await db.timetableSlot.create({
+      data: {
+        schoolId, level: input.level, weekday: input.weekday, startTime: input.startTime,
+        endTime: input.endTime, subject: input.subject, teacherId: input.teacherId, room: input.room,
+      },
+      select: { id: true },
+    });
+    revalidatePath("/admin/timetable");
+    return { status: "ok", id: slot.id };
+  },
+);
+
+export const updateSlot = secureAction(
+  {
+    name: "timetable.slot-update",
+    resource: "timetable",
+    permission: "user:manage",
+    input: z.object({ slotId: z.string().uuid(), ...slotShape }).refine(slotRefine, { message: "Fin avant début", path: ["endTime"] }),
+    resourceId: (i) => i.slotId,
+    auditMetadata: (i) => ({ level: i.level, weekday: i.weekday, subject: i.subject }),
+  },
+  async ({ input, db }): Promise<SlotResult> => {
+    const existing = await db.timetableSlot.findFirst({ where: { id: input.slotId }, select: { id: true } });
+    if (!existing) return { status: "not_found" };
+    await db.timetableSlot.update({
+      where: { id: input.slotId },
+      data: {
+        level: input.level, weekday: input.weekday, startTime: input.startTime, endTime: input.endTime,
+        subject: input.subject, teacherId: input.teacherId, room: input.room,
+      },
+    });
+    revalidatePath("/admin/timetable");
+    return { status: "ok", id: input.slotId };
+  },
+);
+
+export const deleteSlot = secureAction(
+  {
+    name: "timetable.slot-delete",
+    resource: "timetable",
+    permission: "user:manage",
+    input: z.object({ slotId: z.string().uuid() }),
+    resourceId: (i) => i.slotId,
+    auditMetadata: (_i, data: SlotResult | undefined) => ({ outcome: data?.status }),
+    auditSeverity: () => "WARNING",
+  },
+  async ({ input, db }): Promise<SlotResult> => {
+    const existing = await db.timetableSlot.findFirst({ where: { id: input.slotId }, select: { id: true } });
+    if (!existing) return { status: "not_found" };
+    await db.timetableSlot.delete({ where: { id: input.slotId } });
+    revalidatePath("/admin/timetable");
+    return { status: "ok", id: input.slotId };
+  },
+);
+
 export const createShareLink = secureAction(
   {
     name: "timetable.share-create",
