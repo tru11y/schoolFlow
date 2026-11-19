@@ -78,7 +78,38 @@ export default async function UsersPage({
         <button className={`${field} bg-raised hover:bg-surface`}>Filtrer</button>
       </form>
 
-      <Card className="overflow-x-auto p-2 sm:p-4">
+      {/* Mobile: stacked cards */}
+      <div className="grid gap-3 sm:hidden">
+        {users.map((u) => {
+          const manageable = u.id !== principal.userId && canManageRole(principal.role, u.role);
+          return (
+            <div key={u.id} className="rounded-3xl bg-surface p-4 shadow-soft ring-1 ring-ink/5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium">{u.firstName} {u.lastName}</p>
+                  <p className="truncate text-xs text-ink/70">
+                    {u.email}{u.phone ? ` · ${u.phone}` : ""}{u.specialty ? ` · ${u.specialty}` : ""}
+                  </p>
+                </div>
+                <Badge tone={u.isActive ? "success" : "danger"}>{u.isActive ? "Actif" : "Inactif"}</Badge>
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <Badge tone="info">{ROLE_LABELS[u.role]}</Badge>
+                {manageable ? (
+                  <UserActions id={u.id} role={u.role} active={u.isActive} assignable={creatable} user={{ id: u.id, firstName: u.firstName, lastName: u.lastName, email: u.email, phone: u.phone }} />
+                ) : (
+                  <span className="text-xs text-ink/60">{u.id === principal.userId ? "Vous" : "—"}</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {users.length === 0 ? (
+          <p className="rounded-3xl bg-surface p-8 text-center text-sm text-ink/70 shadow-soft">Aucun compte trouvé.</p>
+        ) : null}
+      </div>
+
+      <Card className="hidden overflow-x-auto p-2 sm:block sm:p-4">
         <table className="w-full min-w-[760px] text-left text-sm">
           <caption className="sr-only">Liste des comptes</caption>
           <thead className="text-ink/70">

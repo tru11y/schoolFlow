@@ -20,7 +20,7 @@ export function Topbar({ name, role, school }: { name: string; role: string; sch
   return (
     <header
       data-chrome
-      className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-ink/5 bg-canvas/80 px-6 py-3.5 backdrop-blur-md md:px-10"
+      className="z-20 flex items-center justify-between gap-4 border-b border-ink/5 bg-canvas/80 px-6 py-3.5 backdrop-blur-md md:sticky md:top-0 md:px-10"
     >
       <p className="truncate text-sm font-medium text-ink/70">{school}</p>
       <div className="flex items-center gap-3">

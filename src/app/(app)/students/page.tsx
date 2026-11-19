@@ -95,7 +95,29 @@ export default async function StudentsPage({
         <button className={`${field} bg-raised hover:bg-surface`}>Filtrer</button>
       </form>
 
-      <Card className="overflow-x-auto p-2 sm:p-4">
+      {/* Mobile: stacked cards */}
+      <div className="grid gap-3 sm:hidden">
+        {students.map((s) => (
+          <div key={s.id} className="rounded-3xl bg-surface p-4 shadow-soft ring-1 ring-ink/5">
+            <div className="flex items-start justify-between gap-3">
+              <Link href={`/students/${s.id}`} className="min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-accent">
+                <span className="font-medium">{s.firstName} {s.lastName}</span>
+                <span className="block truncate text-xs text-ink/70">{s.email}</span>
+              </Link>
+              <DeleteStudentButton id={s.id} name={`${s.firstName} ${s.lastName}`} compact />
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-sm">
+              <Badge tone="neutral">{s.profile?.level ?? "—"}</Badge>
+              {s.profile ? <Badge tone={STATUS_TONES[s.profile.status]}>{STATUS_LABELS[s.profile.status]}</Badge> : null}
+            </div>
+          </div>
+        ))}
+        {students.length === 0 ? (
+          <p className="rounded-3xl bg-surface p-8 text-center text-sm text-ink/70 shadow-soft">Aucun élève trouvé.</p>
+        ) : null}
+      </div>
+
+      <Card className="hidden overflow-x-auto p-2 sm:block sm:p-4">
         <table className="w-full min-w-[560px] text-left text-sm">
           <caption className="sr-only">Liste des élèves</caption>
           <thead className="text-ink/70">

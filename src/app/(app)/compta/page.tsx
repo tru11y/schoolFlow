@@ -137,7 +137,36 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
         ))}
       </nav>
 
-      <Card className="overflow-x-auto p-2 sm:p-4">
+      {/* Mobile: invoice cards */}
+      <div className="grid gap-3 sm:hidden">
+        {visible.map(({ inv, status, carried }) => (
+          <div key={inv.id} className={`rounded-3xl bg-surface p-4 shadow-soft ring-1 ring-ink/5 ${carried ? "opacity-50" : ""}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-medium">{inv.student.firstName} {inv.student.lastName}</p>
+                <p className="truncate text-xs text-ink/70">{inv.label} · {inv.dueDate.toLocaleDateString("fr-FR")}</p>
+              </div>
+              {carried ? <Badge tone="info">Reporté</Badge> : <Badge tone={STATUS_VIEW[status].tone}>{STATUS_VIEW[status].label}</Badge>}
+            </div>
+            <dl className="mt-3 grid grid-cols-3 gap-2 text-sm tabular-nums">
+              <div><dt className="text-xs text-ink/60">Dû</dt><dd>{formatMoney(inv.amountCents, currency)}</dd></div>
+              <div><dt className="text-xs text-ink/60">Payé</dt><dd>{formatMoney(inv.paidCents, currency)}</dd></div>
+              <div><dt className="text-xs text-ink/60">Reste</dt><dd className="font-medium">{carried ? "—" : formatMoney(remaining(inv), currency)}</dd></div>
+            </dl>
+            <div className="mt-3 flex items-center justify-end gap-1">
+              {canWrite && !carried && status !== "PAID" ? (
+                <Link href={`/compta/pay?student=${inv.studentId}`} className="rounded-2xl bg-mint/15 px-4 py-2 text-mint outline-none focus-visible:ring-2 focus-visible:ring-accent">Encaisser</Link>
+              ) : null}
+              {canManageInvoices && !carried ? (
+                <InvoiceRowActions currency={symbol} exponent={CURRENCIES[currency].exponent} invoice={{ id: inv.id, amount: inv.amountCents / 10 ** CURRENCIES[currency].exponent, paidCents: inv.paidCents, label: inv.label }} />
+              ) : null}
+            </div>
+          </div>
+        ))}
+        {visible.length === 0 ? <p className="rounded-3xl bg-surface p-8 text-center text-sm text-ink/70 shadow-soft">Aucune facture.</p> : null}
+      </div>
+
+      <Card className="hidden overflow-x-auto p-2 sm:block sm:p-4">
         <table className="w-full min-w-[820px] text-left text-sm">
           <caption className="sr-only">Liste des factures</caption>
           <thead className="text-ink/70">
@@ -206,7 +235,42 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
         <h2 className="text-lg font-semibold">Paiements par mois</h2>
         <ExportButton resource="payments" label="Exporter les paiements" />
       </div>
-      <Card className="overflow-x-auto p-2 sm:p-4">
+      {/* Mobile: payment cards grouped by period */}
+      <div className="grid gap-4 sm:hidden">
+        {paymentGroups.map((g) => (
+          <div key={g.period}>
+            <div className="mb-2 flex items-center justify-between px-1">
+              <h3 className="text-sm font-semibold">{periodLabel(g.period)}</h3>
+              <span className="text-sm font-semibold tabular-nums">{formatMoney(g.total, currency)}</span>
+            </div>
+            <div className="grid gap-3">
+              {g.rows.map((p) => (
+                <div key={p.id} className="rounded-3xl bg-surface p-4 shadow-soft ring-1 ring-ink/5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium">{p.student.firstName} {p.student.lastName}</p>
+                      <p className="truncate text-xs text-ink/70">{p.student.profile?.level ?? "—"} · {p.description}</p>
+                    </div>
+                    <span className="shrink-0 font-medium tabular-nums">{formatMoney(p.amountCents, currency)}</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-2 text-xs text-ink/60">
+                    <span>{p.paidAt.toLocaleDateString("fr-FR")} · {METHOD_LABELS[p.method]}</span>
+                    <a href={`/compta/receipt/${p.id}`} className="rounded-xl bg-sky/15 px-3 py-1.5 text-sky outline-none focus-visible:ring-2 focus-visible:ring-accent">Reçu PDF</a>
+                  </div>
+                  {canManagePayments ? (
+                    <div className="mt-2 flex justify-end">
+                      <PaymentRowActions currency={symbol} exponent={CURRENCIES[currency].exponent} payment={{ id: p.id, amount: p.amountCents / 10 ** CURRENCIES[currency].exponent, method: p.method, description: p.description, paidAt: p.paidAt.toISOString().slice(0, 10), reference: p.reference }} />
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+        {payments.length === 0 ? <p className="rounded-3xl bg-surface p-8 text-center text-sm text-ink/70 shadow-soft">Aucun paiement enregistré.</p> : null}
+      </div>
+
+      <Card className="hidden overflow-x-auto p-2 sm:block sm:p-4">
         <table className="w-full min-w-[820px] text-left text-sm">
           <caption className="sr-only">Paiements classés par mois et par niveau</caption>
           <thead className="text-ink/70">
