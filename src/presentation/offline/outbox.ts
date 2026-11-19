@@ -43,6 +43,27 @@ export async function enqueue(url: string, body: unknown): Promise<OutboxItem> {
   return item;
 }
 
+/**
+ * Exécute l'action en ligne ; hors-ligne (ou sur échec réseau) met la requête en
+ * file pour rejeu via `url`. `queued: true` → enregistré localement, à synchroniser.
+ */
+export async function runOrQueue<R>(
+  url: string,
+  payload: unknown,
+  run: () => Promise<R>,
+): Promise<{ queued: true } | { queued: false; res: R }> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    await enqueue(url, payload);
+    return { queued: true };
+  }
+  try {
+    return { queued: false, res: await run() };
+  } catch {
+    await enqueue(url, payload);
+    return { queued: true };
+  }
+}
+
 export const listOutbox = () => tx<OutboxItem[]>("readonly", (s) => s.getAll());
 const remove = (id: string) => tx("readwrite", (s) => s.delete(id));
 

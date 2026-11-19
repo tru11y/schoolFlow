@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { runOrQueue } from "@/presentation/offline/outbox";
 import { createStudent, type CreateStudentResult } from "../actions";
 
 const field =
@@ -47,6 +48,22 @@ export function EnrollForm({ levels, currency }: { levels: string[]; currency: s
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [parentKeys, setParentKeys] = useState<number[]>([0]);
   const [created, setCreated] = useState<Extract<CreateStudentResult, { status: "created" }> | null>(null);
+  const [queued, setQueued] = useState(false);
+
+  if (queued) {
+    return (
+      <div className="grid gap-4 rounded-[2rem] bg-surface/70 p-6 shadow-soft ring-1 ring-ink/10" role="status">
+        <h2 className="text-xl font-semibold">Inscription enregistrée hors-ligne 📴</h2>
+        <p className="text-sm text-ink/70">
+          L'élève sera créé automatiquement au retour du réseau. L'identifiant et le mot de passe provisoire étant
+          générés à ce moment-là, ouvrez la fiche après synchronisation pour réinitialiser le mot de passe.
+        </p>
+        <Link href="/students" className="w-fit rounded-2xl bg-sky px-5 py-3 font-medium text-canvas">
+          Retour à la liste
+        </Link>
+      </div>
+    );
+  }
 
   if (created) {
     return (
@@ -69,9 +86,12 @@ export function EnrollForm({ levels, currency }: { levels: string[]; currency: s
     <form
       action={(fd) =>
         start(async () => {
-          const res = await createStudent({ ...Object.fromEntries(fd), parents: readParents(fd) });
+          const payload = { ...Object.fromEntries(fd), parents: readParents(fd) };
           setError(null);
           setFieldErrors({});
+          const out = await runOrQueue("/api/students/create", payload, () => createStudent(payload));
+          if (out.queued) return setQueued(true);
+          const res = out.res;
           if (!res.ok) {
             setFieldErrors(res.error.fieldErrors ?? {});
             return setError(res.error.message);

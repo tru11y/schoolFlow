@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState, useTransition } from "react";
-import { enqueue } from "@/presentation/offline/outbox";
+import { runOrQueue } from "@/presentation/offline/outbox";
 import { takeAttendance } from "./actions";
 
 type Status = "PRESENT" | "ABSENT" | "LATE";
@@ -45,28 +45,19 @@ export function TakeForm({ level, timing, students, today }: Props) {
       setError(null);
       const payload = { level, records: Object.entries(values).map(([studentId, status]) => ({ studentId, status })) };
 
-      // Hors-ligne connu : on met en file sans tenter l'appel réseau.
-      if (typeof navigator !== "undefined" && navigator.onLine === false) {
-        await enqueue("/api/attendance/take", payload);
+      const out = await runOrQueue("/api/attendance/take", payload, () => takeAttendance(payload));
+      if (out.queued) {
         setLogbookHref(null);
         setDone("Appel enregistré hors-ligne — synchronisé au retour du réseau");
         return;
       }
-
-      try {
-        const res = await takeAttendance(payload);
-        if (res.ok && res.data.subject) {
-          const p = new URLSearchParams({ new: "1", level, subject: res.data.subject, date: today, ...(res.data.slotId ? { slot: res.data.slotId } : {}) });
-          setLogbookHref(`/cahier-de-texte?${p}`);
-        }
-        if (res.ok) setDone(res.data.isOverdue ? "Appel enregistré (signalé hors créneau)" : "Appel enregistré");
-        else setError(res.error.message);
-      } catch {
-        // Échec réseau pendant l'envoi : on bascule en file hors-ligne.
-        await enqueue("/api/attendance/take", payload);
-        setLogbookHref(null);
-        setDone("Appel enregistré hors-ligne — synchronisé au retour du réseau");
+      const res = out.res;
+      if (res.ok && res.data.subject) {
+        const p = new URLSearchParams({ new: "1", level, subject: res.data.subject, date: today, ...(res.data.slotId ? { slot: res.data.slotId } : {}) });
+        setLogbookHref(`/cahier-de-texte?${p}`);
       }
+      if (res.ok) setDone(res.data.isOverdue ? "Appel enregistré (signalé hors créneau)" : "Appel enregistré");
+      else setError(res.error.message);
     });
 
   return (
