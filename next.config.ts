@@ -11,6 +11,8 @@ const securityHeaders = [
 const config: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  // L'import d'emploi du temps envoie le .xlsx (base64) via Server Action.
+  experimental: { serverActions: { bodySizeLimit: "8mb" } },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

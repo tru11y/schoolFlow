@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { parseTimetableCsv, parseWeekday } from "./import";
+import { levelKey, parseTimetableCsv, parseWeekday } from "./import";
+
+describe("levelKey", () => {
+  it("fait correspondre les libellés Excel aux niveaux de la plateforme", () => {
+    const platform = ["Terminale D", "Terminale A", "1ere A", "1ere D", "2nde A", "2nde C", "3eme", "5eme", "4eme", "6eme"];
+    const excel = ["TLE D", "TLE A", "1ERE A", "1ERE D", "2NDE A", "2NDE C", "3E", "5E", "4E", "6E"];
+    const byKey = new Map(platform.map((p) => [levelKey(p), p]));
+    // 10 clés distinctes, aucune collision.
+    expect(byKey.size).toBe(10);
+    expect(excel.map((e) => byKey.get(levelKey(e)))).toEqual(platform);
+  });
+});
 
 describe("parseWeekday", () => {
   it("accepts names, abbreviations and numbers", () => {
