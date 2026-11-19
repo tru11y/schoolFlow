@@ -6,6 +6,7 @@ import { hourRange, subjectTone, toMinutes } from "@/core/domain/students/timeta
 
 const DURATIONS = [{ label: "45 min", min: 45 }, { label: "1 h", min: 60 }, { label: "1 h 30", min: 90 }, { label: "2 h", min: 120 }];
 const hhmm = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+import { runOrQueue } from "@/presentation/offline/outbox";
 import { deleteSlot, saveSlot } from "../actions";
 
 export interface SlotView {
@@ -126,9 +127,14 @@ export function Timetable({ studentId, level, slots, teachers, chapters }: Props
           key={editing?.id ?? "new"}
           action={(fd) =>
             start(async () => {
-              const res = await saveSlot({ ...Object.fromEntries(fd), id: editing?.id, studentId });
-              if (res.ok) return close();
-              setError(res.error.fieldErrors ? "Vérifiez les champs (heures, matière)." : res.error.message);
+              const payload = { ...Object.fromEntries(fd), id: editing?.id, studentId };
+              const out = await runOrQueue("/api/timetable/slot/save", payload, () => saveSlot(payload));
+              if (out.queued) {
+                alert("Créneau enregistré hors-ligne — synchronisé au retour du réseau.");
+                return close();
+              }
+              if (out.res.ok) return close();
+              setError(out.res.error.fieldErrors ? "Vérifiez les champs (heures, matière)." : out.res.error.message);
             })
           }
           className="grid gap-3 p-6"
@@ -195,9 +201,13 @@ export function Timetable({ studentId, level, slots, teachers, chapters }: Props
                     disabled={pending}
                     onClick={() =>
                       start(async () => {
-                        const res = await deleteSlot({ id: editing.id, studentId });
-                        if (res.ok) close();
-                        else setError(res.error.message);
+                        const payload = { id: editing.id, studentId };
+                        const out = await runOrQueue("/api/timetable/slot/delete", payload, () => deleteSlot(payload));
+                        if (out.queued) {
+                          alert("Suppression enregistrée hors-ligne — synchronisée au retour du réseau.");
+                          close();
+                        } else if (out.res.ok) close();
+                        else setError(out.res.error.message);
                       })
                     }
                     className="rounded-2xl bg-danger px-4 py-2 font-semibold text-canvas disabled:opacity-60"

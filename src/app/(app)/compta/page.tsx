@@ -8,6 +8,7 @@ import { financeStudentScope, studentScopeWhere } from "@/core/application/finan
 import { getSchoolCurrency } from "@/infrastructure/db/school";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { requirePagePermission } from "@/presentation/auth/guards";
+import { Clock, Receipt, TrendingUp, Wallet } from "lucide-react";
 import { Badge, Card, PageTitle, StatCard } from "@/presentation/components/ui";
 import { ExportButton } from "@/presentation/components/export-button";
 import { PayDialog } from "./compta-controls";
@@ -116,10 +117,10 @@ export default async function ComptaPage({ searchParams }: { searchParams: Promi
       </div>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard index={0} icon="💰" tone="mint" label="Encaissé ce mois" value={formatMoney(collected._sum.amountCents ?? 0, currency)} />
-        <StatCard index={1} icon="🧾" tone="peach" label="Reste à payer (arriérés cumulés)" value={formatMoney(outstanding, currency)} />
-        <StatCard index={2} icon="📈" tone="sky" label="Taux de recouvrement" value={`${recoveryRate} %`} />
-        <StatCard index={3} icon="⏰" tone="lilac" label="dont en retard" value={formatMoney(overdue, currency)} />
+        <StatCard index={0} icon={Wallet} tone="mint" label="Encaissé ce mois" value={formatMoney(collected._sum.amountCents ?? 0, currency)} />
+        <StatCard index={1} icon={Receipt} tone="peach" label="Reste à payer (arriérés cumulés)" value={formatMoney(outstanding, currency)} />
+        <StatCard index={2} icon={TrendingUp} tone="sky" label="Taux de recouvrement" value={`${recoveryRate} %`} />
+        <StatCard index={3} icon={Clock} tone="lilac" label="dont en retard" value={formatMoney(overdue, currency)} />
       </div>
 
       <nav aria-label="Filtrer par statut" className="mb-4 flex gap-2 overflow-x-auto pb-1">

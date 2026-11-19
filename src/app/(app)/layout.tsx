@@ -7,20 +7,20 @@ import { Topbar } from "@/presentation/components/topbar";
 import { OutboxSync } from "@/presentation/offline/outbox-sync";
 
 const NAV: (NavItem & { permission?: Permission })[] = [
-  { href: "/dashboard", label: "Tableau de bord", icon: "🏠" },
-  { href: "/ai-assistant", label: "Copilote IA", icon: "✨", permission: "copilot:use" },
-  { href: "/ai-assistant/competitors", label: "Concurrents / Benchmark", icon: "🏁", permission: "copilot:use" },
-  { href: "/students", label: "Élèves", icon: "🎓", permission: "user:manage" },
-  { href: "/compta", label: "Comptabilité", icon: "💳", permission: "finance:read" },
-  { href: "/cahier-de-texte", label: "Cahier de texte", icon: "📓", permission: "homework:read" },
-  { href: "/curriculum", label: "Programmes", icon: "📚", permission: "homework:read" },
-  { href: "/absences", label: "Absences", icon: "🙋", permission: "attendance:read" },
-  { href: "/admin/users", label: "Utilisateurs", icon: "👥", permission: "user:manage" },
-  { href: "/admin/trash", label: "Corbeille", icon: "🗑️", permission: "user:manage" },
-  { href: "/admin/levels", label: "Niveaux", icon: "🏷️", permission: "user:manage" },
-  { href: "/admin/timetable", label: "Emploi du temps", icon: "🗓️", permission: "user:manage" },
-  { href: "/admin/settings", label: "Paramètres", icon: "⚙️", permission: "school:manage" },
-  { href: "/admin/audit", label: "Journal d'audit", icon: "🛡️", permission: "audit:read" },
+  { href: "/dashboard", label: "Tableau de bord", icon: "dashboard" },
+  { href: "/ai-assistant", label: "Copilote IA", icon: "copilot", permission: "copilot:use" },
+  { href: "/ai-assistant/competitors", label: "Concurrents / Benchmark", icon: "competitors", permission: "copilot:use" },
+  { href: "/students", label: "Élèves", icon: "students", permission: "user:manage" },
+  { href: "/compta", label: "Comptabilité", icon: "compta", permission: "finance:read" },
+  { href: "/cahier-de-texte", label: "Cahier de texte", icon: "logbook", permission: "homework:read" },
+  { href: "/curriculum", label: "Programmes", icon: "curriculum", permission: "homework:read" },
+  { href: "/absences", label: "Absences", icon: "absences", permission: "attendance:read" },
+  { href: "/admin/users", label: "Utilisateurs", icon: "users", permission: "user:manage" },
+  { href: "/admin/trash", label: "Corbeille", icon: "trash", permission: "user:manage" },
+  { href: "/admin/levels", label: "Niveaux", icon: "levels", permission: "user:manage" },
+  { href: "/admin/timetable", label: "Emploi du temps", icon: "timetable", permission: "user:manage" },
+  { href: "/admin/settings", label: "Paramètres", icon: "settings", permission: "school:manage" },
+  { href: "/admin/audit", label: "Journal d'audit", icon: "audit", permission: "audit:read" },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
