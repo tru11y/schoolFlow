@@ -4,6 +4,7 @@ import { requireAuth } from "@/presentation/auth/guards";
 import { CopilotFab } from "@/presentation/components/copilot-fab";
 import { Sidebar, type NavItem } from "@/presentation/components/sidebar";
 import { Topbar } from "@/presentation/components/topbar";
+import { OutboxSync } from "@/presentation/offline/outbox-sync";
 
 const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/dashboard", label: "Tableau de bord", icon: "🏠" },
@@ -41,6 +42,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         />
         <main className="px-6 pb-12 md:px-10">{children}</main>
         {can(principal.role, "copilot:use") ? <CopilotFab /> : null}
+        <OutboxSync />
       </div>
     </div>
   );

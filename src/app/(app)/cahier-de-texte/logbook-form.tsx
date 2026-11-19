@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { timeRange } from "@/core/domain/logbook/logbook";
 import { WEEKDAYS } from "@/core/domain/students/student";
+import { runOrQueue } from "@/presentation/offline/outbox";
 import { saveLogbookEntry } from "./actions";
 
 export interface LogbookInitial {
@@ -95,9 +96,14 @@ export function LogbookForm({ levels, subjectsByLevel, slots, chapters, today, i
           action={(fd) =>
             start(async () => {
               setError(null);
-              const res = await saveLogbookEntry({ ...Object.fromEntries(fd), id: initial?.id });
-              if (res.ok) return close();
-              setError(res.error.fieldErrors ? "Vérifiez les champs obligatoires." : res.error.message);
+              const payload = { ...Object.fromEntries(fd), id: initial?.id };
+              const out = await runOrQueue("/api/logbook/save", payload, () => saveLogbookEntry(payload));
+              if (out.queued) {
+                alert("Séance enregistrée hors-ligne — synchronisée au retour du réseau.");
+                return close();
+              }
+              if (out.res.ok) return close();
+              setError(out.res.error.fieldErrors ? "Vérifiez les champs obligatoires." : out.res.error.message);
             })
           }
           className="grid gap-3 p-6 sm:grid-cols-2"

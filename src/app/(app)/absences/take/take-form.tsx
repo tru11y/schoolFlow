@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState, useTransition } from "react";
+import { runOrQueue } from "@/presentation/offline/outbox";
 import { takeAttendance } from "./actions";
 
 type Status = "PRESENT" | "ABSENT" | "LATE";
@@ -42,10 +43,15 @@ export function TakeForm({ level, timing, students, today }: Props) {
   const submit = () =>
     start(async () => {
       setError(null);
-      const res = await takeAttendance({
-        level,
-        records: Object.entries(values).map(([studentId, status]) => ({ studentId, status })),
-      });
+      const payload = { level, records: Object.entries(values).map(([studentId, status]) => ({ studentId, status })) };
+
+      const out = await runOrQueue("/api/attendance/take", payload, () => takeAttendance(payload));
+      if (out.queued) {
+        setLogbookHref(null);
+        setDone("Appel enregistré hors-ligne — synchronisé au retour du réseau");
+        return;
+      }
+      const res = out.res;
       if (res.ok && res.data.subject) {
         const p = new URLSearchParams({ new: "1", level, subject: res.data.subject, date: today, ...(res.data.slotId ? { slot: res.data.slotId } : {}) });
         setLogbookHref(`/cahier-de-texte?${p}`);

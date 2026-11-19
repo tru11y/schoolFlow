@@ -23,7 +23,7 @@ export default async function UsersPage({
 
   const where: Prisma.UserWhereInput = {
     deletedAt: null,
-    ...(isRole(role) ? { role } : {}),
+    ...(isRole(role) && role !== "STUDENT" ? { role } : { role: { not: "STUDENT" } }),
     ...(status === "active" ? { isActive: true } : status === "inactive" ? { isActive: false } : {}),
     ...(query
       ? {
@@ -68,7 +68,7 @@ export default async function UsersPage({
         <input name="q" defaultValue={query} placeholder="Rechercher un nom, un e-mail…" aria-label="Recherche" className={`${field} min-w-60 flex-1`} />
         <select name="role" defaultValue={role ?? ""} aria-label="Rôle" className={field}>
           <option value="">Tous les rôles</option>
-          {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+          {ROLES.filter((r) => r !== "STUDENT").map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>
         <select name="status" defaultValue={status ?? ""} aria-label="Statut" className={field}>
           <option value="">Tous les statuts</option>
