@@ -25,8 +25,7 @@ const input = z.object({
   content: text(5000),
   homework: blank(z.string().trim().max(2000)),
   homeworkDue: blank(day),
-  chapterId: blank(z.string().uuid()),
-  chapterDone: z.preprocess((v) => v === "on" || v === true, z.boolean()),
+  chapterLabel: blank(z.string().trim().max(160)),
 });
 
 export const saveLogbookEntry = secureAction(
@@ -36,7 +35,7 @@ export const saveLogbookEntry = secureAction(
     permission: "homework:write",
     input,
     resourceId: (_i, data: { id: string }) => data.id,
-    auditMetadata: (i) => ({ level: i.level, subject: i.subject, date: i.date, slotId: i.slotId, chapterId: i.chapterId }),
+    auditMetadata: (i) => ({ level: i.level, subject: i.subject, date: i.date, slotId: i.slotId, chapter: i.chapterLabel }),
   },
   async ({ input, db, principal }): Promise<{ id: string }> => {
     const schoolId = principal.schoolId;
@@ -66,11 +65,6 @@ export const saveLogbookEntry = secureAction(
       endTime ??= slot.endTime;
     }
 
-    const chapter = input.chapterId ? await db.curriculumChapter.findFirst({ where: { id: input.chapterId, deletedAt: null } }) : null;
-    if (input.chapterId && (!chapter || chapter.level !== input.level || chapter.subject !== input.subject)) {
-      throw new ForbiddenError("logbook:chapter");
-    }
-
     const date = new Date(`${input.date}T00:00:00.000Z`);
     const data = {
       level: input.level,
@@ -83,7 +77,8 @@ export const saveLogbookEntry = secureAction(
       content: input.content,
       homework: input.homework ?? null,
       homeworkDue: input.homeworkDue ? new Date(`${input.homeworkDue}T00:00:00.000Z`) : null,
-      chapterId: input.chapterId ?? null,
+      chapterLabel: input.chapterLabel ?? null,
+      chapterId: null,
     };
 
     // Update an explicit entry, or the one already written for this slot and day; otherwise create.
@@ -98,10 +93,6 @@ export const saveLogbookEntry = secureAction(
     const saved = existing
       ? await db.logbookEntry.update({ where: { id: existing.id }, data: { ...data, deletedAt: null }, select: { id: true } })
       : await db.logbookEntry.create({ data: { ...data, schoolId, teacherId: principal.userId }, select: { id: true } });
-
-    if (chapter && input.chapterDone && !chapter.completedAt) {
-      await db.curriculumChapter.update({ where: { id: chapter.id }, data: { completedAt: new Date(), completedById: principal.userId } });
-    }
 
     revalidatePath("/cahier-de-texte");
     revalidatePath("/curriculum");

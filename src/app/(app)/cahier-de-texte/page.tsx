@@ -80,7 +80,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Prom
         initial = {
           id: e.id, level: e.level, subject: e.subject, date: iso(e.date), slotId: e.slotId ?? undefined,
           startTime: e.startTime ?? undefined, endTime: e.endTime ?? undefined, title: e.title, content: e.content,
-          homework: e.homework ?? undefined, homeworkDue: iso(e.homeworkDue), chapterId: e.chapterId ?? undefined,
+          homework: e.homework ?? undefined, homeworkDue: iso(e.homeworkDue), chapterLabel: e.chapterLabel ?? undefined,
         };
       }
     } else if (q.new && q.level && q.subject && (all ? levels.includes(q.level) : canWriteScope(scopes, q.level, q.subject))) {
@@ -153,7 +153,7 @@ export default async function LogbookPage({ searchParams }: { searchParams: Prom
               <header className="flex flex-wrap items-center gap-2">
                 <Badge tone="info">{dayLabel(when, today)}{times ? ` ${times}` : ""} • {e.subject}</Badge>
                 <Badge tone="warning">{e.level}</Badge>
-                {e.chapter ? <Badge tone="success">Ch. {e.chapter.position} · {e.chapter.title}</Badge> : null}
+                {e.chapterLabel ? <Badge tone="success">{e.chapterLabel}</Badge> : e.chapter ? <Badge tone="success">Ch. {e.chapter.position} · {e.chapter.title}</Badge> : null}
                 {canWrite && mine ? (
                   <span className="ml-auto flex items-center gap-1">
                     <Link href={`/cahier-de-texte?edit=${e.id}`} className="rounded-xl px-3 py-1 text-sm text-ink/70 hover:bg-raised"><span aria-hidden>✏️ </span>Modifier</Link>

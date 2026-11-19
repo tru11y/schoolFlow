@@ -439,6 +439,8 @@ model LogbookEntry {
   homeworkDue DateTime?          @db.Date
   chapterId   String?            @db.Uuid
   chapter     CurriculumChapter? @relation(fields: [chapterId], references: [id], onDelete: SetNull)
+  /// Free-text chapter typed by the teacher (replaces the curriculum picker).
+  chapterLabel String?
   deletedAt   DateTime?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
