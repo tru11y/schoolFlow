@@ -3,8 +3,8 @@
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-3xl bg-surface p-6 shadow-soft ${className}`}>{children}</section>;
+export function Card({ children, className = "", id }: { children: ReactNode; className?: string; id?: string }) {
+  return <section id={id} className={`rounded-3xl bg-surface p-6 shadow-soft ${className}`}>{children}</section>;
 }
 
 const TONES = {

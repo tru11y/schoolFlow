@@ -5,7 +5,10 @@ import { z } from "zod";
 import { ForbiddenError } from "@/core/domain/errors";
 import { parseTimetableCsv, levelKey, type ParsedSlot, type RowError } from "@/core/domain/timetable/import";
 import { parseTimetableGrid } from "@/core/domain/timetable/xlsx-grid";
+import { resolveDownloadUrl } from "@/core/domain/timetable/source-url";
+import { newShareToken } from "@/core/domain/timetable/share";
 import { readSheetsAsGrids } from "@/infrastructure/xlsx/read-grid";
+import { fetchRemoteFile } from "@/infrastructure/net/fetch-file";
 import { tenantPrisma } from "@/infrastructure/db/tenant-prisma";
 import { secureAction } from "@/presentation/secure-action";
 
@@ -133,23 +136,100 @@ export const importTimetableXlsx = secureAction(
   async ({ input, db, principal }): Promise<ImportSummary> => {
     const schoolId = principal.schoolId;
     if (!schoolId) throw new ForbiddenError("tenant:missing");
+    const rows = await parseXlsxBest(Buffer.from(input.xlsxBase64, "base64"));
+    return persistImportedRows(db, schoolId, rows, [], input.replace);
+  },
+);
 
-    let sheets;
+/** Parse un classeur .xlsx (grille) et retourne les créneaux du dernier onglet exploitable. */
+async function parseXlsxBest(buffer: Buffer): Promise<ParsedSlot[]> {
+  let sheets;
+  try {
+    sheets = await readSheetsAsGrids(buffer);
+  } catch {
+    throw new ForbiddenError("timetable:bad-xlsx");
+  }
+  let best: ParsedSlot[] | null = null;
+  for (const { grid } of sheets) {
+    const parsed = parseTimetableGrid(grid);
+    if (parsed.columns && parsed.rows.length) best = parsed.rows;
+  }
+  if (!best) throw new ForbiddenError("timetable:bad-columns");
+  return best;
+}
+
+export const importTimetableFromUrl = secureAction(
+  {
+    name: "timetable.import-url",
+    resource: "timetable",
+    permission: "user:manage",
+    input: z.object({ url: z.string().min(1).max(2048), replace: z.boolean().default(false) }),
+    resourceId: () => null,
+    auditMetadata: (i) => ({ replace: i.replace }),
+  },
+  async ({ input, db, principal }): Promise<ImportSummary> => {
+    const schoolId = principal.schoolId;
+    if (!schoolId) throw new ForbiddenError("tenant:missing");
+
+    const resolved = resolveDownloadUrl(input.url);
+    if ("error" in resolved) throw new ForbiddenError("timetable:bad-url");
+
+    let file;
     try {
-      sheets = await readSheetsAsGrids(Buffer.from(input.xlsxBase64, "base64"));
+      file = await fetchRemoteFile(resolved.url);
     } catch {
-      throw new ForbiddenError("timetable:bad-xlsx");
+      throw new ForbiddenError("timetable:fetch-failed");
     }
 
-    // Le classeur contient souvent plusieurs onglets (versions successives) : on
-    // retient le DERNIER onglet exploitable, qui correspond à la version courante.
-    let best: ParsedSlot[] | null = null;
-    for (const { grid } of sheets) {
-      const parsed = parseTimetableGrid(grid);
-      if (parsed.columns && parsed.rows.length) best = parsed.rows;
+    // Détection xlsx (signature ZIP « PK ») vs CSV texte.
+    const isXlsx = file.buffer.length > 1 && file.buffer[0] === 0x50 && file.buffer[1] === 0x4b;
+    if (isXlsx) {
+      const rows = await parseXlsxBest(file.buffer);
+      return persistImportedRows(db, schoolId, rows, [], input.replace);
     }
-    if (!best) throw new ForbiddenError("timetable:bad-columns");
+    const { columns, rows, errors } = parseTimetableCsv(file.buffer.toString("utf8"));
+    if (!columns) throw new ForbiddenError("timetable:bad-columns");
+    return persistImportedRows(db, schoolId, rows, errors, input.replace);
+  },
+);
 
-    return persistImportedRows(db, schoolId, best, [], input.replace);
+export const createShareLink = secureAction(
+  {
+    name: "timetable.share-create",
+    resource: "timetable",
+    permission: "user:manage",
+    input: z.object({ level: z.string().min(1).max(60) }),
+    resourceId: () => null,
+    auditMetadata: (i) => ({ level: i.level }),
+  },
+  async ({ input, db, principal }): Promise<{ token: string }> => {
+    const schoolId = principal.schoolId;
+    if (!schoolId) throw new ForbiddenError("tenant:missing");
+    const existing = await db.timetableShare.findFirst({ where: { level: input.level } });
+    if (existing && !existing.revokedAt) return { token: existing.token };
+    const token = newShareToken();
+    if (existing) {
+      await db.timetableShare.update({ where: { id: existing.id }, data: { token, revokedAt: null, createdById: principal.userId } });
+    } else {
+      await db.timetableShare.create({ data: { schoolId, level: input.level, token, createdById: principal.userId } });
+    }
+    revalidatePath("/admin/timetable");
+    return { token };
+  },
+);
+
+export const revokeShareLink = secureAction(
+  {
+    name: "timetable.share-revoke",
+    resource: "timetable",
+    permission: "user:manage",
+    input: z.object({ level: z.string().min(1).max(60) }),
+    resourceId: () => null,
+    auditMetadata: (i) => ({ level: i.level }),
+  },
+  async ({ input, db }): Promise<{ ok: true }> => {
+    await db.timetableShare.updateMany({ where: { level: input.level, revokedAt: null }, data: { revokedAt: new Date() } });
+    revalidatePath("/admin/timetable");
+    return { ok: true };
   },
 );

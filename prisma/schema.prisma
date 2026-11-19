@@ -147,6 +147,21 @@ model GradeLevel {
   @@map("grade_levels")
 }
 
+/// Public, revocable share link for a level's weekly timetable (read-only).
+model TimetableShare {
+  id          String    @id @default(uuid()) @db.Uuid
+  schoolId    String    @db.Uuid
+  level       String
+  token       String    @unique
+  createdById String?   @db.Uuid
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  @@unique([schoolId, level])
+  @@index([schoolId])
+  @@map("timetable_shares")
+}
+
 /// Reinforcement curriculum: ordered chapters per class level and subject.
 model CurriculumChapter {
   id             String          @id @default(uuid()) @db.Uuid

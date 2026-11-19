@@ -12,7 +12,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 export function Topbar({ name, role, school }: { name: string; role: string; school: string }) {
   return (
-    <header className="flex items-center justify-between gap-4 px-6 py-4 md:px-10">
+    <header data-chrome className="flex items-center justify-between gap-4 px-6 py-4 md:px-10">
       <p className="text-sm text-ink/70">{school}</p>
       <div className="flex items-center gap-4">
         <div className="text-right text-sm leading-tight">
