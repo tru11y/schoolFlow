@@ -1,6 +1,6 @@
 // Service worker SchoolFlow — cache app-shell + offline (lecture seule).
 // L'écriture hors-ligne (outbox) est gérée côté app via IndexedDB, pas ici.
-const VERSION = "sf-v2";
+const VERSION = "sf-v3";
 const OUTBOX_DB = "schoolflow";
 const OUTBOX_STORE = "outbox";
 const SYNC_TAG = "outbox-flush";
@@ -65,7 +65,7 @@ async function flushOutbox() {
     try {
       const res = await fetch(it.url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": it.id },
         body: JSON.stringify(it.body),
         credentials: "same-origin",
       });

@@ -162,6 +162,15 @@ model TimetableShare {
   @@map("timetable_shares")
 }
 
+/// Garde anti-doublon pour les requêtes rejouées depuis la file hors-ligne.
+/// La clé (uuid généré côté client) est consommée une seule fois.
+model IdempotencyKey {
+  key       String   @id
+  createdAt DateTime @default(now())
+
+  @@map("idempotency_keys")
+}
+
 /// Reinforcement curriculum: ordered chapters per class level and subject.
 model CurriculumChapter {
   id             String          @id @default(uuid()) @db.Uuid

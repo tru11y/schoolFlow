@@ -55,7 +55,7 @@ export async function flushOutbox(): Promise<{ sent: number; left: number }> {
     try {
       const res = await fetch(it.url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": it.id },
         body: JSON.stringify(it.body),
         credentials: "same-origin",
       });
