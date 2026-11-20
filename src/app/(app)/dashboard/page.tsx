@@ -145,10 +145,12 @@ async function ManagementOverview({ principal }: { principal: Principal }) {
         </div>
       ) : null}
       {copilot ? <TodayPanel cards={copilot.cards} /> : null}
+      <TeachingSection principal={principal} />
       <Shortcuts
         items={[
           { href: "/students", label: "Élèves" },
-          { href: "/absences", label: "Absences" },
+          { href: "/absences/take", label: "Faire l'appel" },
+          { href: "/cahier-de-texte", label: "Cahier de texte" },
           { href: "/compta", label: "Comptabilité" },
           { href: "/admin/users", label: "Utilisateurs" },
           { href: "/admin/timetable", label: "Emploi du temps" },
@@ -158,13 +160,14 @@ async function ManagementOverview({ principal }: { principal: Principal }) {
   );
 }
 
-/** Professeur : uniquement ses cours, ses appels et son cahier de texte du jour. */
-async function TeacherOverview({ principal }: { principal: Principal }) {
-  const db = tenantPrisma(principal);
+type SlotRow = { id: string; subject: string; level: string | null; startTime: string; endTime: string; room: string | null };
+
+/** Charge les cours du jour d'un enseignant (prof ou directeur qui enseigne). */
+async function loadTeacherDay(db: ReturnType<typeof tenantPrisma>, userId: string) {
   const { weekday } = localParts(new Date());
   const today = todayUtc();
-  const slots = await db.timetableSlot.findMany({
-    where: { teacherId: principal.userId, weekday },
+  const slots: SlotRow[] = await db.timetableSlot.findMany({
+    where: { teacherId: userId, weekday },
     orderBy: { startTime: "asc" },
     select: { id: true, subject: true, level: true, startTime: true, endTime: true, room: true },
   });
@@ -177,67 +180,95 @@ async function TeacherOverview({ principal }: { principal: Principal }) {
   const logged = new Set(logs.map((l) => l.slotId));
   const toCall = slots.filter((s) => !called.has(s.id)).length;
   const toLog = slots.filter((s) => !logged.has(s.id)).length;
-  const dateIso = today.toISOString().slice(0, 10);
   const reco = [
     ...(toCall > 0 ? [`${toCall} appel${toCall > 1 ? "s" : ""} à faire aujourd'hui`] : []),
     ...(toLog > 0 ? [`${toLog} séance${toLog > 1 ? "s" : ""} à consigner au cahier de texte`] : []),
     ...(slots.length > 0 && toCall === 0 && toLog === 0 ? ["Tout est à jour pour aujourd'hui 🎉"] : []),
   ];
+  return { slots, called, logged, toCall, toLog, reco, dateIso: today.toISOString().slice(0, 10) };
+}
 
+function CourseList({ data }: { data: Awaited<ReturnType<typeof loadTeacherDay>> }) {
+  const { slots, called, logged, dateIso } = data;
+  return (
+    <ul className="grid gap-2">
+      {slots.map((s) => (
+        <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-canvas px-4 py-3">
+          <div>
+            <p className="font-medium">
+              {s.subject} · {s.level}
+              {s.room ? <span className="text-ink/50"> · {s.room}</span> : null}
+            </p>
+            <p className="text-xs text-ink/70 tabular-nums">{hhmm(s.startTime)}–{hhmm(s.endTime)}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {called.has(s.id) ? (
+              <Badge tone="success">Appel fait</Badge>
+            ) : (
+              <Link href={`/absences/take?level=${encodeURIComponent(s.level ?? "")}`} className="rounded-xl bg-peach/15 px-3 py-1 text-xs text-peach outline-none hover:bg-peach/25 focus-visible:ring-2 focus-visible:ring-accent">
+                Faire l&apos;appel
+              </Link>
+            )}
+            {logged.has(s.id) ? (
+              <Badge tone="success">Cahier rempli</Badge>
+            ) : (
+              <Link
+                href={`/cahier-de-texte?${new URLSearchParams({ new: "1", level: s.level ?? "", subject: s.subject, date: dateIso, slot: s.id })}`}
+                className="rounded-xl bg-lilac/15 px-3 py-1 text-xs text-lilac outline-none hover:bg-lilac/25 focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                Remplir le cahier
+              </Link>
+            )}
+          </div>
+        </li>
+      ))}
+      {slots.length === 0 ? <li className="py-6 text-center text-sm text-ink/60">Aucun cours programmé aujourd&apos;hui.</li> : null}
+    </ul>
+  );
+}
+
+const TEACHER_SHORTCUTS = [
+  { href: "/absences/take", label: "Faire l'appel" },
+  { href: "/cahier-de-texte", label: "Cahier de texte" },
+  { href: "/absences", label: "Absences" },
+  { href: "/curriculum", label: "Programmes" },
+];
+
+/** Bloc enseignement pour un directeur qui enseigne : masqué s'il n'a aucun cours aujourd'hui. */
+async function TeachingSection({ principal }: { principal: Principal }) {
+  const data = await loadTeacherDay(tenantPrisma(principal), principal.userId);
+  if (data.slots.length === 0) return null;
+  return (
+    <>
+      <Card className="mt-6">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 className="text-lg font-semibold">Votre enseignement du jour</h2>
+          <span className="text-xs text-ink/50 tabular-nums">{data.toCall} appel(s) · {data.toLog} cahier(s) à faire</span>
+        </div>
+        <CourseList data={data} />
+      </Card>
+      <Recommended items={data.reco} />
+    </>
+  );
+}
+
+/** Professeur : uniquement ses cours, ses appels et son cahier de texte du jour. */
+async function TeacherOverview({ principal }: { principal: Principal }) {
+  const data = await loadTeacherDay(tenantPrisma(principal), principal.userId);
   return (
     <>
       <PageTitle title="Tableau de bord" subtitle="Vos cours et appels du jour" />
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard index={0} icon="clock" tone="sky" label="Cours aujourd'hui" value={String(slots.length)} />
-        <StatCard index={1} icon="hand" tone="peach" label="Appels à faire" value={String(toCall)} hint={toCall === 0 ? "Tout est à jour" : undefined} />
-        <StatCard index={2} icon="book" tone="lilac" label="Cahier à remplir" value={String(toLog)} />
+        <StatCard index={0} icon="clock" tone="sky" label="Cours aujourd'hui" value={String(data.slots.length)} />
+        <StatCard index={1} icon="hand" tone="peach" label="Appels à faire" value={String(data.toCall)} hint={data.toCall === 0 ? "Tout est à jour" : undefined} />
+        <StatCard index={2} icon="book" tone="lilac" label="Cahier à remplir" value={String(data.toLog)} />
       </div>
-
       <Card className="mt-6">
         <h2 className="mb-4 text-lg font-semibold">Vos cours du jour</h2>
-        <ul className="grid gap-2">
-          {slots.map((s) => (
-            <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-canvas px-4 py-3">
-              <div>
-                <p className="font-medium">
-                  {s.subject} · {s.level}
-                  {s.room ? <span className="text-ink/50"> · {s.room}</span> : null}
-                </p>
-                <p className="text-xs text-ink/70 tabular-nums">{hhmm(s.startTime)}–{hhmm(s.endTime)}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {called.has(s.id) ? (
-                  <Badge tone="success">Appel fait</Badge>
-                ) : (
-                  <Link href={`/absences/take?level=${encodeURIComponent(s.level ?? "")}`} className="rounded-xl bg-peach/15 px-3 py-1 text-xs text-peach outline-none hover:bg-peach/25 focus-visible:ring-2 focus-visible:ring-accent">
-                    Faire l&apos;appel
-                  </Link>
-                )}
-                {logged.has(s.id) ? (
-                  <Badge tone="success">Cahier rempli</Badge>
-                ) : (
-                  <Link
-                    href={`/cahier-de-texte?${new URLSearchParams({ new: "1", level: s.level ?? "", subject: s.subject, date: dateIso, slot: s.id })}`}
-                    className="rounded-xl bg-lilac/15 px-3 py-1 text-xs text-lilac outline-none hover:bg-lilac/25 focus-visible:ring-2 focus-visible:ring-accent"
-                  >
-                    Remplir le cahier
-                  </Link>
-                )}
-              </div>
-            </li>
-          ))}
-          {slots.length === 0 ? <li className="py-6 text-center text-sm text-ink/60">Aucun cours programmé aujourd&apos;hui.</li> : null}
-        </ul>
+        <CourseList data={data} />
       </Card>
-      <Recommended items={reco} />
-      <Shortcuts
-        items={[
-          { href: "/absences/take", label: "Faire l'appel" },
-          { href: "/cahier-de-texte", label: "Cahier de texte" },
-          { href: "/absences", label: "Absences" },
-          { href: "/curriculum", label: "Programmes" },
-        ]}
-      />
+      <Recommended items={data.reco} />
+      <Shortcuts items={TEACHER_SHORTCUTS} />
     </>
   );
 }
