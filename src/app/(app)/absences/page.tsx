@@ -21,8 +21,14 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
     const levels = await listLevels(db);
     const { level: rawLevel } = await searchParams;
     const level = levels.find((l) => l.name === rawLevel)?.name;
+    const ownOnly = principal.role === "TEACHER";
     const sessions = await db.attendanceSession.findMany({
-      where: { deletedAt: null, date: new Date(localParts(new Date()).date), ...(level ? { level } : {}) },
+      where: {
+        deletedAt: null,
+        date: new Date(localParts(new Date()).date),
+        ...(level ? { level } : {}),
+        ...(ownOnly ? { OR: [{ recorderId: principal.userId }, { teacherId: principal.userId }] } : {}),
+      },
       orderBy: { submittedAt: "desc" },
       include: {
         recorder: { select: { firstName: true, lastName: true } },
@@ -33,7 +39,7 @@ export default async function AbsencesPage({ searchParams }: { searchParams: Pro
     return (
       <>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <PageTitle title="Absences" subtitle="Appels du jour" />
+          <PageTitle title="Absences" subtitle={ownOnly ? "Vos appels du jour" : "Appels du jour"} />
           <div className="flex flex-wrap items-start gap-3">
           <ExportButton resource="attendance" params={{ level }} label="Exporter les présences" />
           <Link
