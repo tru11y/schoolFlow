@@ -537,3 +537,22 @@ model Session {
   @@index([expiresAt])
   @@map("sessions")
 }
+
+/// End-of-month snapshot of the collection sheet (who owes what), stored so it can be re-downloaded unchanged.
+model CollectionSheet {
+  id                  String   @id @default(uuid()) @db.Uuid
+  schoolId            String   @db.Uuid
+  /// Billing month, "YYYY-MM".
+  period              String
+  /// Frozen CSV content (UTF-8, with BOM), ready to serve as-is.
+  csv                 String
+  rowCount            Int
+  totalDueCents       Int
+  totalPaidCents      Int
+  totalRemainingCents Int
+  generatedAt         DateTime @default(now())
+
+  @@unique([schoolId, period])
+  @@index([schoolId, generatedAt])
+  @@map("collection_sheets")
+}

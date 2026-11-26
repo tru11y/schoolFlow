@@ -252,6 +252,30 @@ export const deleteStudent = secureAction(
   },
 );
 
+/** Reversible deactivation (not a soft delete): keeps the student in the list but blocks login and revokes open sessions. */
+export const setStudentActive = secureAction(
+  {
+    name: "student.setActive",
+    resource: "student",
+    permission: "user:manage",
+    input: z.object({ id: z.string().uuid(), active: z.boolean() }),
+    resourceId: (i) => i.id,
+  },
+  async ({ input, db }) => {
+    const { count } = await db.user.updateMany({
+      where: { id: input.id, role: "STUDENT", deletedAt: null },
+      data: { isActive: input.active },
+    });
+    if (count === 0) throw new ForbiddenError("student:not-found");
+    if (!input.active) {
+      await prisma.session.updateMany({ where: { userId: input.id, revokedAt: null }, data: { revokedAt: new Date() } });
+    }
+    revalidatePath("/students");
+    revalidatePath(`/students/${input.id}`);
+    return { id: input.id, active: input.active };
+  },
+);
+
 export const restoreStudent = secureAction(
   {
     name: "student.restore",

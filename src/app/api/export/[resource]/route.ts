@@ -1,5 +1,6 @@
 import { localParts } from "@/core/domain/attendance/policy";
-import { effectiveStatus, remaining } from "@/core/domain/finance/billing";
+import { effectiveStatus, periodOf, remaining } from "@/core/domain/finance/billing";
+import { buildCollectionSheet } from "@/infrastructure/billing/collection-sheet";
 import { formatMoney } from "@/core/domain/finance/money";
 import { ForbiddenError } from "@/core/domain/errors";
 import { financeStudentScope } from "@/core/application/finance/student-scope";
@@ -30,6 +31,7 @@ const METHOD = { CASH: "Espèces", MOBILE_MONEY: "Mobile Money", TRANSFER: "Vire
 const ATTENDANCE = { PRESENT: "Présent", ABSENT: "Absent", LATE: "Retard" } as const;
 
 const isStatus = (v: string | undefined): v is EnrollmentStatusValue => ENROLLMENT_STATUSES.some((s) => s === v);
+const isPeriod = (v: string | undefined): v is string => /^\d{4}-\d{2}$/.test(v ?? "");
 const isRole = (v: string | undefined): v is Role => ROLES.some((r) => r === v);
 const severityOf = (m: unknown): string =>
   typeof m === "object" && m !== null && "severity" in m ? String((m as { severity: unknown }).severity) : "INFO";
@@ -130,6 +132,18 @@ const RESOURCES: Record<string, Resource> = {
           METHOD[p.method], formatMoney(p.amountCents, currency, "code"), p.reference ?? p.id,
         ]),
       };
+    },
+  },
+  collections: {
+    // Monthly collection sheet for manual cash-in: who owes what this month, already paid, left to collect.
+    permission: "finance:write",
+    async build(db, principal, params) {
+      const scope = await financeStudentScope(db, principal);
+      if (!scope.all || !principal.schoolId) throw new ForbiddenError("finance:write");
+      const period = isPeriod(params.get("period") ?? undefined) ? params.get("period")! : periodOf(localParts(new Date()).date);
+      const level = params.get("level") ?? undefined;
+      const sheet = await buildCollectionSheet(principal.schoolId, period, level);
+      return { headers: sheet.headers, rows: sheet.rows };
     },
   },
   attendance: {
