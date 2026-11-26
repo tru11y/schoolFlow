@@ -12,6 +12,7 @@ const NAV: (NavItem & { permission?: Permission })[] = [
   { href: "/ai-assistant/competitors", label: "Concurrents / Benchmark", icon: "competitors", permission: "copilot:use" },
   { href: "/students", label: "Élèves", icon: "students", permission: "user:manage" },
   { href: "/compta", label: "Comptabilité", icon: "compta", permission: "finance:read" },
+  { href: "/admin/collections", label: "Encaissements", icon: "compta", permission: "finance:write" },
   { href: "/cahier-de-texte", label: "Cahier de texte", icon: "logbook", permission: "homework:read" },
   { href: "/curriculum", label: "Programmes", icon: "curriculum", permission: "homework:read" },
   { href: "/absences", label: "Absences", icon: "absences", permission: "attendance:read" },

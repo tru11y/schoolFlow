@@ -19,6 +19,9 @@ const schema = z.object({
   /** Needed only when the key is organization-level (not scoped to a workspace): sent as `anthropic-workspace-id`. */
   ANTHROPIC_WORKSPACE_ID: optional(z.string().min(5)),
   CRON_SECRET: optional(z.string().min(16)),
+  // Optional outbound email (end-of-month collection sheet). Both must be set to enable sending.
+  RESEND_API_KEY: optional(z.string().min(10)),
+  EMAIL_FROM: optional(z.string().email()),
   APP_URL: z.string().url(),
   AUTH_LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
   AUTH_LOGIN_IP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(30),
